@@ -1,16 +1,45 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
+	"go/ast"
+	"go/doc/comment"
+	"go/format"
+	"go/parser"
+	"go/token"
+	"log"
 	"os"
+	"os/exec"
 
 	"github.com/spf13/cobra"
 )
 
+func FormatCode(cmnt string) *comment.Doc {
+	// コメントのソースコードに対しフォーマットをかける
+	var p comment.Parser
+	doc := p.Parse(cmnt)
+	for _, c := range doc.Content {
+		switch c := c.(type) {
+		case *comment.Code:
+			src, err := format.Source([]byte(c.Text))
+			if err == nil {
+				c.Text = string(src)
+			}
+		}
+	}
+	return doc
+}
 
+func GetAst(code string) *ast.File {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "", code, parser.ParseComments)
+	if err != nil {
+		log.Fatalln("Error", err)
+	}
+	return f
+}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -24,7 +53,28 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
+	Args: cobra.MinimumNArgs(1),
 	// Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		// TODO: filepathではないかも。rename
+		filepath := args[0]
+
+		// cmntにはgo doc $FILEPATHの出力結果が入力されることを期待
+		b, err := exec.Command("gofmt", filepath).Output()
+		if err != nil {
+			log.Fatal(err)
+		}
+		code := string(b)
+		ast := GetAst(code)
+
+		var doc *comment.Doc
+		for _, cmnt := range ast.Comments {
+			doc = FormatCode(cmnt.Text())
+		}
+
+		var pr comment.Printer
+		os.Stdout.Write(pr.Text(doc))
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -47,5 +97,3 @@ func init() {
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
-
-
