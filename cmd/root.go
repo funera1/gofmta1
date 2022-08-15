@@ -30,9 +30,12 @@ func FormatCode(cmnt *ast.Comment, code string) string {
 		}
 	}
 	var pr comment.Printer
-	new_cmnt := string(pr.Comment(doc))
+	format_cmnt := string(pr.Comment(doc))
 	rune_code := []rune(code)
-	for i, nc := range new_cmnt {
+	// もとのコメントをフォーマットかけたもので置き換える
+	// 実行するとわかるが、もとのコメントのフォーマットしたコメントの長さが変わるのでこれでは
+	// 置き換えれていない
+	for i, nc := range format_cmnt {
 		rune_code[int(cmnt.Slash)-1+i] = nc
 	}
 	return string(rune_code)
@@ -62,11 +65,10 @@ to quickly create a Cobra application.`,
 	Args: cobra.MinimumNArgs(1),
 	// Run: func(cmd *cobra.Command, args []string) { },
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO: filepathではないかも。rename
-		filepath := args[0]
+		target := args[0]
 
 		// cmntにはgo doc $FILEPATHの出力結果が入力されることを期待
-		b, err := exec.Command("gofmt", filepath).Output()
+		b, err := exec.Command("gofmt", target).Output()
 		if err != nil {
 			log.Fatal(err)
 		}
