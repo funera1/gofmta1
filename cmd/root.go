@@ -16,10 +16,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func FormatCode(cmnt string) *comment.Doc {
+func FormatCode(cmnt *ast.Comment, code string) string {
 	// コメントのソースコードに対しフォーマットをかける
 	var p comment.Parser
-	doc := p.Parse(cmnt)
+	doc := p.Parse(cmnt.Text)
 	for _, c := range doc.Content {
 		switch c := c.(type) {
 		case *comment.Code:
@@ -29,7 +29,13 @@ func FormatCode(cmnt string) *comment.Doc {
 			}
 		}
 	}
-	return doc
+	var pr comment.Printer
+	new_cmnt := string(pr.Comment(doc))
+	rune_code := []rune(code)
+	for i, nc := range new_cmnt {
+		rune_code[int(cmnt.Slash)-1+i] = nc
+	}
+	return string(rune_code)
 }
 
 func GetAst(code string) *ast.File {
@@ -67,13 +73,13 @@ to quickly create a Cobra application.`,
 		code := string(b)
 		ast := GetAst(code)
 
-		var doc *comment.Doc
-		for _, cmnt := range ast.Comments {
-			doc = FormatCode(cmnt.Text())
+		for _, cmntGrp := range ast.Comments {
+			for _, cmnt := range cmntGrp.List {
+				code = FormatCode(cmnt, code)
+			}
 		}
 
-		var pr comment.Printer
-		os.Stdout.Write(pr.Text(doc))
+		print(code)
 	},
 }
 
