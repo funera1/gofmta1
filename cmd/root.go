@@ -75,6 +75,8 @@ to quickly create a Cobra application.`,
 		code := string(b)
 		ast := GetAst(code)
 
+		// コメント部分についてのみFormatCodeを適用する
+		// そうしないとコメント内部でないソースコードにフォーマットがかかってしまう
 		for _, cmntGrp := range ast.Comments {
 			for _, cmnt := range cmntGrp.List {
 				code = FormatCode(cmnt, code)
