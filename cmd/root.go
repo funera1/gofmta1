@@ -50,7 +50,7 @@ type CodeBlock struct {
 func DevideIntoCommentAndNonComment(code string, ast *ast.File) []CodeBlock {
 	// コメントの位置がわかれば良さそう
 	var blocks []string
-	var splitStartPos []int
+	var splitStartPos []int = []int{0}
 	isCommentMap := map[int]bool{}
 	// 区切る位置のリストを取得
 	for _, cmntGrp := range ast.Comments {
