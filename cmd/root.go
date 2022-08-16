@@ -75,10 +75,8 @@ func DevideIntoCommentAndNonComment(code string, ast *ast.File) []CodeBlock {
 
 	// blocks[i]がコメントかどうかの値をつける
 	var codeBlocks []CodeBlock
-	for i, pos := range devidePos {
-		if i+1 == len(devidePos) {
-			break
-		}
+	for i := 0; i < len(devidePos)-1; i++ {
+		pos := devidePos[i]
 		if _, ok := isCommentMap[pos]; ok {
 			codeBlocks = append(codeBlocks, CodeBlock{
 				IsComment: true,
