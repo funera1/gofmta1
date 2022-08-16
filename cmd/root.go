@@ -50,11 +50,30 @@ func GetAst(code string) *ast.File {
 	return f
 }
 
-// func SplitComment(code string) []string {
-// 	var blocks []string
-// 	// コメントの位置がわかれば良さそう
-//
-// }
+func SplitComment(code string, ast *ast.File) []string {
+	// コメントの位置がわかれば良さそう
+	var blocks []string
+	var splitStartPos []int
+	// 区切る位置のリストを取得
+	for _, cmntGrp := range ast.Comments {
+		for _, cmnt := range cmntGrp.List {
+			pos := cmnt.Slash
+			offset := len(cmnt.Text)
+			splitStartPos = append(splitStartPos, int(pos)-1)
+			splitStartPos = append(splitStartPos, int(pos)-1+offset)
+		}
+	}
+	// 最後の位置も分割位置として含めておくことで実装が楽になる
+	splitStartPos = append(splitStartPos, len([]rune(code)))
+
+	// splitStartPosに従ってcodeを分割する
+	for i := 0; i < len(splitStartPos)-1; i++ {
+		start := splitStartPos[i]
+		end := splitStartPos[i+1]
+		blocks = append(blocks, string([]rune(code)[start:end]))
+	}
+	return blocks
+}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -82,27 +101,7 @@ to quickly create a Cobra application.`,
 		ast := GetAst(code)
 
 		// codeについてコメントとコメントでわけてブロックにする
-		// SplitComment(code)
-		var blocks []string
-		var splitStartPos []int
-		// 区切る位置のリストを取得
-		for _, cmntGrp := range ast.Comments {
-			for _, cmnt := range cmntGrp.List {
-				pos := cmnt.Slash
-				offset := len(cmnt.Text)
-				splitStartPos = append(splitStartPos, int(pos)-1)
-				splitStartPos = append(splitStartPos, int(pos)-1+offset)
-			}
-		}
-		// 最後の位置も分割位置として含めておくことで実装が楽になる
-		splitStartPos = append(splitStartPos, len([]rune(code)))
-
-		// splitStartPosに従ってcodeを分割する
-		for i := 0; i < len(splitStartPos)-1; i++ {
-			start := splitStartPos[i]
-			end := splitStartPos[i+1]
-			blocks = append(blocks, string([]rune(code)[start:end]))
-		}
+		SplitComment(code, ast)
 
 		// // debug: splitCodeが正しく動いているか確認
 		// for i, s := range blocks {
