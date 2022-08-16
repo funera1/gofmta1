@@ -67,7 +67,7 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		target := args[0]
 
-		// cmntにはgo doc $FILEPATHの出力結果が入力されることを期待
+		// cmntにはgo fmt targetの出力結果が入力されることを期待
 		b, err := exec.Command("gofmt", target).Output()
 		if err != nil {
 			log.Fatal(err)
