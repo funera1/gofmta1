@@ -43,50 +43,50 @@ func GetAst(code string) *ast.File {
 }
 
 type CodeBlock struct {
-	isComment bool
+	IsComment bool
 	Text      string
 }
 
 func DevideIntoCommentAndNonComment(code string, ast *ast.File) []CodeBlock {
 	// コメントの位置がわかれば良さそう
 	var blocks []string
-	var splitStartPos []int = []int{0}
+	var devidePos []int = []int{0}
 	isCommentMap := map[int]bool{}
 	// 区切る位置のリストを取得
 	for _, cmntGrp := range ast.Comments {
 		for _, cmnt := range cmntGrp.List {
 			pos := int(cmnt.Slash) - 1
 			offset := len(cmnt.Text)
-			splitStartPos = append(splitStartPos, pos)
-			splitStartPos = append(splitStartPos, pos+offset)
+			devidePos = append(devidePos, pos)
+			devidePos = append(devidePos, pos+offset)
 
 			isCommentMap[pos] = true
 		}
 	}
 	// 最後の位置も分割位置として含めておくことで実装が楽になる
-	splitStartPos = append(splitStartPos, len([]rune(code)))
+	devidePos = append(devidePos, len([]rune(code)))
 
-	// splitStartPosに従ってcodeを分割する
-	for i := 0; i < len(splitStartPos)-1; i++ {
-		start := splitStartPos[i]
-		end := splitStartPos[i+1]
+	// devidePosに従ってcodeを分割する
+	for i := 0; i < len(devidePos)-1; i++ {
+		start := devidePos[i]
+		end := devidePos[i+1]
 		blocks = append(blocks, string([]rune(code)[start:end]))
 	}
 
 	// blocks[i]がコメントかどうかの値をつける
 	var codeBlocks []CodeBlock
-	for i, pos := range splitStartPos {
-		if i+1 == len(splitStartPos) {
+	for i, pos := range devidePos {
+		if i+1 == len(devidePos) {
 			break
 		}
 		if _, ok := isCommentMap[pos]; ok {
 			codeBlocks = append(codeBlocks, CodeBlock{
-				isComment: true,
+				IsComment: true,
 				Text:      blocks[i],
 			})
 		} else {
 			codeBlocks = append(codeBlocks, CodeBlock{
-				isComment: false,
+				IsComment: false,
 				Text:      blocks[i],
 			})
 		}
@@ -124,9 +124,8 @@ to quickly create a Cobra application.`,
 
 		// コメント部分についてのみFormatCodeを適用する
 		for i, cb := range codeBlocks {
-			if cb.isComment {
+			if cb.IsComment {
 				codeBlocks[i].Text = FormatCode(cb.Text)
-				// fmt.Printf("comment is %s", cb.Text)
 			}
 		}
 
