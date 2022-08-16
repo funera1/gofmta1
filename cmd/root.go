@@ -50,17 +50,25 @@ func GetAst(code string) *ast.File {
 	return f
 }
 
-func DevideIntoCommentAndNonComment(code string, ast *ast.File) []string {
+type CodeBlock struct {
+	isComment bool
+	codeBlock string
+}
+
+func DevideIntoCommentAndNonComment(code string, ast *ast.File) []CodeBlock {
 	// コメントの位置がわかれば良さそう
 	var blocks []string
 	var splitStartPos []int
+	var isCommentMap map[int]bool
 	// 区切る位置のリストを取得
 	for _, cmntGrp := range ast.Comments {
 		for _, cmnt := range cmntGrp.List {
-			pos := cmnt.Slash
+			pos := int(cmnt.Slash)
 			offset := len(cmnt.Text)
-			splitStartPos = append(splitStartPos, int(pos)-1)
-			splitStartPos = append(splitStartPos, int(pos)-1+offset)
+			splitStartPos = append(splitStartPos, pos-1)
+			splitStartPos = append(splitStartPos, pos-1+offset)
+
+			isCommentMap[pos] = true
 		}
 	}
 	// 最後の位置も分割位置として含めておくことで実装が楽になる
@@ -72,7 +80,23 @@ func DevideIntoCommentAndNonComment(code string, ast *ast.File) []string {
 		end := splitStartPos[i+1]
 		blocks = append(blocks, string([]rune(code)[start:end]))
 	}
-	return blocks
+
+	// blocks[i]がコメントかどうかの値をつける
+	var codeBlocks []CodeBlock
+	for i, pos := range splitStartPos {
+		if _, ok := isCommentMap[pos]; ok {
+			codeBlocks = append(codeBlocks, CodeBlock{
+				isComment: true,
+				codeBlock: blocks[i],
+			})
+		} else {
+			codeBlocks = append(codeBlocks, CodeBlock{
+				isComment: false,
+				codeBlock: blocks[i],
+			})
+		}
+	}
+	return codeBlocks
 }
 
 // rootCmd represents the base command when called without any subcommands
@@ -102,7 +126,7 @@ to quickly create a Cobra application.`,
 
 		// codeについてコメントとコメントでわけてブロックにする
 		// codeBlocksは[コメントかどうか, ソースコード]をもつリストにしたい
-		codeBlocks := SplitComment(code, ast)
+		codeBlocks := DevideIntoCommentAndNonComment(code, ast)
 
 		// // debug: splitCodeが正しく動いているか確認
 		// for i, s := range blocks {
