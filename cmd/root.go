@@ -16,10 +16,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func FormatCode(cmnt *ast.Comment, code string) string {
+func FormatCode(cmnt string) string {
 	// コメントのソースコードに対しフォーマットをかける
 	var p comment.Parser
-	doc := p.Parse(cmnt.Text)
+	doc := p.Parse(cmnt)
 	for _, c := range doc.Content {
 		switch c := c.(type) {
 		case *comment.Code:
@@ -30,15 +30,7 @@ func FormatCode(cmnt *ast.Comment, code string) string {
 		}
 	}
 	var pr comment.Printer
-	format_cmnt := string(pr.Comment(doc))
-	rune_code := []rune(code)
-	// もとのコメントをフォーマットかけたもので置き換える
-	// 実行するとわかるが、もとのコメントのフォーマットしたコメントの長さが変わるのでこれでは
-	// 置き換えれていない
-	for i, nc := range format_cmnt {
-		rune_code[int(cmnt.Slash)-1+i] = nc
-	}
-	return string(rune_code)
+	return string(pr.Comment(doc))
 }
 
 func GetAst(code string) *ast.File {
@@ -52,21 +44,21 @@ func GetAst(code string) *ast.File {
 
 type CodeBlock struct {
 	isComment bool
-	codeBlock string
+	Text      string
 }
 
 func DevideIntoCommentAndNonComment(code string, ast *ast.File) []CodeBlock {
 	// コメントの位置がわかれば良さそう
 	var blocks []string
 	var splitStartPos []int
-	var isCommentMap map[int]bool
+	isCommentMap := map[int]bool{}
 	// 区切る位置のリストを取得
 	for _, cmntGrp := range ast.Comments {
 		for _, cmnt := range cmntGrp.List {
-			pos := int(cmnt.Slash)
+			pos := int(cmnt.Slash) - 1
 			offset := len(cmnt.Text)
-			splitStartPos = append(splitStartPos, pos-1)
-			splitStartPos = append(splitStartPos, pos-1+offset)
+			splitStartPos = append(splitStartPos, pos)
+			splitStartPos = append(splitStartPos, pos+offset)
 
 			isCommentMap[pos] = true
 		}
@@ -84,15 +76,18 @@ func DevideIntoCommentAndNonComment(code string, ast *ast.File) []CodeBlock {
 	// blocks[i]がコメントかどうかの値をつける
 	var codeBlocks []CodeBlock
 	for i, pos := range splitStartPos {
+		if i+1 == len(splitStartPos) {
+			break
+		}
 		if _, ok := isCommentMap[pos]; ok {
 			codeBlocks = append(codeBlocks, CodeBlock{
 				isComment: true,
-				codeBlock: blocks[i],
+				Text:      blocks[i],
 			})
 		} else {
 			codeBlocks = append(codeBlocks, CodeBlock{
 				isComment: false,
-				codeBlock: blocks[i],
+				Text:      blocks[i],
 			})
 		}
 	}
@@ -125,23 +120,23 @@ to quickly create a Cobra application.`,
 		ast := GetAst(code)
 
 		// codeについてコメントとコメントでわけてブロックにする
-		// codeBlocksは[コメントかどうか, ソースコード]をもつリストにしたい
 		codeBlocks := DevideIntoCommentAndNonComment(code, ast)
 
-		// // debug: splitCodeが正しく動いているか確認
-		// for i, s := range blocks {
-		// 	fmt.Printf("block %d: %s\n", i, s)
-		// }
-
 		// コメント部分についてのみFormatCodeを適用する
-		// そうしないとコメント内部でないソースコードにフォーマットがかかってしまう
-		for _, cmntGrp := range ast.Comments {
-			for _, cmnt := range cmntGrp.List {
-				code = FormatCode(cmnt, code)
+		for i, cb := range codeBlocks {
+			if cb.isComment {
+				codeBlocks[i].Text = FormatCode(cb.Text)
+				// fmt.Printf("comment is %s", cb.Text)
 			}
 		}
 
-		print(code)
+		// codeBlocksをもとに戻す
+		format_code := ""
+		for _, cb := range codeBlocks {
+			format_code += cb.Text
+		}
+
+		print(format_code)
 	},
 }
 
