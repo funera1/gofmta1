@@ -50,7 +50,7 @@ func GetAst(code string) *ast.File {
 	return f
 }
 
-func DebideIntoCommentAndNonComment(code string, ast *ast.File) []string {
+func DevideIntoCommentAndNonComment(code string, ast *ast.File) []string {
 	// コメントの位置がわかれば良さそう
 	var blocks []string
 	var splitStartPos []int
