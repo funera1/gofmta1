@@ -50,7 +50,7 @@ func GetAst(code string) *ast.File {
 	return f
 }
 
-func SplitComment(code string, ast *ast.File) []string {
+func DebideIntoCommentAndNonComment(code string, ast *ast.File) []string {
 	// コメントの位置がわかれば良さそう
 	var blocks []string
 	var splitStartPos []int
@@ -101,7 +101,8 @@ to quickly create a Cobra application.`,
 		ast := GetAst(code)
 
 		// codeについてコメントとコメントでわけてブロックにする
-		SplitComment(code, ast)
+		// codeBlocksは[コメントかどうか, ソースコード]をもつリストにしたい
+		codeBlocks := SplitComment(code, ast)
 
 		// // debug: splitCodeが正しく動いているか確認
 		// for i, s := range blocks {
