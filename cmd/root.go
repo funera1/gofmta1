@@ -50,11 +50,11 @@ func GetAst(code string) *ast.File {
 	return f
 }
 
-func SplitComment(code string) []string {
-	var blocks []string
-	// コメントの位置がわかれば良さそう
-
-}
+// func SplitComment(code string) []string {
+// 	var blocks []string
+// 	// コメントの位置がわかれば良さそう
+//
+// }
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -94,6 +94,20 @@ to quickly create a Cobra application.`,
 				splitStartPos = append(splitStartPos, int(pos)-1+offset)
 			}
 		}
+		// 最後の位置も分割位置として含めておくことで実装が楽になる
+		splitStartPos = append(splitStartPos, len([]rune(code)))
+
+		// splitStartPosに従ってcodeを分割する
+		for i := 0; i < len(splitStartPos)-1; i++ {
+			start := splitStartPos[i]
+			end := splitStartPos[i+1]
+			blocks = append(blocks, string([]rune(code)[start:end]))
+		}
+
+		// // debug: splitCodeが正しく動いているか確認
+		// for i, s := range blocks {
+		// 	fmt.Printf("block %d: %s\n", i, s)
+		// }
 
 		// コメント部分についてのみFormatCodeを適用する
 		// そうしないとコメント内部でないソースコードにフォーマットがかかってしまう
