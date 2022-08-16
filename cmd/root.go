@@ -50,6 +50,12 @@ func GetAst(code string) *ast.File {
 	return f
 }
 
+func SplitComment(code string) []string {
+	var blocks []string
+	// コメントの位置がわかれば良さそう
+
+}
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "gofmtal",
@@ -74,6 +80,20 @@ to quickly create a Cobra application.`,
 		}
 		code := string(b)
 		ast := GetAst(code)
+
+		// codeについてコメントとコメントでわけてブロックにする
+		// SplitComment(code)
+		var blocks []string
+		var splitStartPos []int
+		// 区切る位置のリストを取得
+		for _, cmntGrp := range ast.Comments {
+			for _, cmnt := range cmntGrp.List {
+				pos := cmnt.Slash
+				offset := len(cmnt.Text)
+				splitStartPos = append(splitStartPos, int(pos)-1)
+				splitStartPos = append(splitStartPos, int(pos)-1+offset)
+			}
+		}
 
 		// コメント部分についてのみFormatCodeを適用する
 		// そうしないとコメント内部でないソースコードにフォーマットがかかってしまう
