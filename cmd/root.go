@@ -4,6 +4,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"fmt"
 	"go/ast"
 	"go/doc/comment"
 	"go/format"
@@ -112,7 +113,6 @@ to quickly create a Cobra application.`,
 		// cmntにはgo fmt targetの出力結果が入力されることを期待
 		b, err := exec.Command("gofmt", target).Output()
 		if err != nil {
-			log.Fatal(err)
 		}
 		code := string(b)
 		ast := GetAst(code)
@@ -128,12 +128,13 @@ to quickly create a Cobra application.`,
 		}
 
 		// codeBlocksをもとに戻す
-		format_code := ""
+		var formattedCode string
 		for _, cb := range codeBlocks {
-			format_code += cb.Text
+			formattedCode += cb.Text
 		}
 
-		print(format_code)
+		// TODO: 出力先を指定できるようにする
+		fmt.Println(formattedCode)
 	},
 }
 
