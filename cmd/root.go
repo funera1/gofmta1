@@ -95,10 +95,13 @@ var rootCmd = &cobra.Command{
 	Short: "A brief description of your application",
 	Long:  "",
 	Args:  cobra.MinimumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		target := args[0]
 
-		ast := GetAst(target)
+		ast, err := GetAst(target)
+		if err != nil {
+			return err
+		}
 
 		// codeについてコメントとコメントでわけてブロックにする
 		codeBlocks := DevideIntoCommentAndNonComment(target, ast)
@@ -118,7 +121,7 @@ var rootCmd = &cobra.Command{
 
 		// TODO: 出力先を指定できるようにする
 		fmt.Println(formattedCode)
-		return nil
+		return
 	},
 }
 
