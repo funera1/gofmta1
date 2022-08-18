@@ -10,9 +10,7 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
-	"log"
 	"os"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 )
@@ -34,11 +32,11 @@ func FormatCode(cmnt string) string {
 	return string(pr.Comment(doc))
 }
 
-func GetAst(code string) *ast.File {
+// とりあえず一つのファイルについてASTを返す
+func GetAst(filename string) *ast.File {
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "", code, parser.ParseComments)
+	f, err := parser.ParseFile(fset, "", filename, parser.ParseComments)
 	if err != nil {
-		log.Fatalln("Error", err)
 	}
 	return f
 }
@@ -103,22 +101,14 @@ examples and usage of using your application. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
 	Args: cobra.MinimumNArgs(1),
-	// Run: func(cmd *cobra.Command, args []string) { },
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		target := args[0]
 
-		// cmntにはgo fmt targetの出力結果が入力されることを期待
-		b, err := exec.Command("gofmt", target).Output()
-		if err != nil {
-		}
-		code := string(b)
-		ast := GetAst(code)
+		ast := GetAst(target)
 
 		// codeについてコメントとコメントでわけてブロックにする
-		codeBlocks := DevideIntoCommentAndNonComment(code, ast)
+		codeBlocks := DevideIntoCommentAndNonComment(target, ast)
 
 		// コメント部分についてのみFormatCodeを適用する
 		for i, cb := range codeBlocks {
@@ -135,6 +125,7 @@ to quickly create a Cobra application.`,
 
 		// TODO: 出力先を指定できるようにする
 		fmt.Println(formattedCode)
+		return nil
 	},
 }
 
