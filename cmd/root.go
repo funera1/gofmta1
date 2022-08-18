@@ -33,12 +33,10 @@ func FormatCode(cmnt string) string {
 }
 
 // とりあえず一つのファイルについてASTを返す
-func GetAst(filename string) *ast.File {
+func GetAst(filename string) (f *ast.File, err error) {
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "", filename, parser.ParseComments)
-	if err != nil {
-	}
-	return f
+	f, err = parser.ParseFile(fset, filename, nil, parser.ParseComments)
+	return
 }
 
 type CodeBlock struct {
