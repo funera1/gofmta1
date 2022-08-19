@@ -17,6 +17,9 @@ import (
 func FormatCode(filename string) (formattedCode string, err error) {
 	// ファイルの中身を取得
 	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return
+	}
 	code := string(b)
 
 	// コード中のソースコードを抜き出しフォーマットをかける
@@ -53,6 +56,9 @@ var rootCmd = &cobra.Command{
 		}
 
 		formattedCode, err := FormatCode(targetfile)
+		if err != nil {
+			return
+		}
 		fmt.Println(formattedCode)
 		return
 	},
