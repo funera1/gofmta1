@@ -31,6 +31,8 @@ func FormatCode(filename string) (formattedCode string, err error) {
 			}
 		}
 	}
+
+	// コード全体に対してフォーマットをかける
 	var pr comment.Printer
 	b, err = format.Source(pr.Comment(doc))
 	formattedCode = string(b)
