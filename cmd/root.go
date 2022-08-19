@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"go/doc/comment"
 	"go/format"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -59,7 +60,10 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return
 		}
-		fmt.Println(formattedCode)
+		// 出力先を指定できるようにした
+		var writer io.Writer
+		writer = os.Stdout
+		fmt.Fprintln(writer, formattedCode)
 		return
 	},
 }
