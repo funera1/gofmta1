@@ -43,6 +43,15 @@ func FormatCode(filename string) (formattedCode string, err error) {
 	return
 }
 
+func GofmtalMain(targetfile string, writer io.Writer) (err error) {
+	formattedCode, err := FormatCode(targetfile)
+	if err != nil {
+		return
+	}
+	fmt.Fprintln(writer, formattedCode)
+	return
+}
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "gofmtal",
@@ -52,18 +61,7 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		// TODO: 複数ファイルやディレクトリ指定したときの対応
 		targetfile := args[0]
-		if err != nil {
-			return
-		}
-
-		formattedCode, err := FormatCode(targetfile)
-		if err != nil {
-			return
-		}
-		// 出力先を指定できるようにした
-		var writer io.Writer
-		writer = os.Stdout
-		fmt.Fprintln(writer, formattedCode)
+		GofmtalMain(targetfile, os.Stdout)
 		return
 	},
 }
