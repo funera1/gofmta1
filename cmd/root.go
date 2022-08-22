@@ -46,62 +46,55 @@ func FormatCode(filename string) (formattedCode string, err error) {
 	return
 }
 
-func isGoFile(filename string) bool {
+func IsGoFile(filename string) bool {
 	return strings.HasSuffix(filename, ".go")
 }
 
 func GofmtalMain(targetfile string, writer io.Writer) (err error) {
-	if !isGoFile(targetfile) {
-		fmt.Printf("%s is not GoFile.\n", targetfile)
+	// Gofileでないならフォーマットかけない
+	if !IsGoFile(targetfile) {
 		return
 	}
 	formattedCode, err := FormatCode(targetfile)
 	if err != nil {
-		println(targetfile + "s formatt is miss.")
 		return
 	}
 	fmt.Fprintln(writer, formattedCode)
 	return
 }
 
+func runE(cmd *cobra.Command, args []string) (err error) {
+	formatWriter := os.Stdout
+	for _, arg := range args {
+		switch info, err := os.Stat(arg); {
+		case err != nil:
+			return err
+		case !info.IsDir():
+			GofmtalMain(arg, formatWriter)
+		default:
+			// ディレクトリ下のすべてのファイルをfilesに追加する
+			var files []string
+			err = filepath.WalkDir(arg, func(path string, d fs.DirEntry, err error) error {
+				if !d.IsDir() {
+					files = append(files, path)
+				}
+				return err
+			})
+			for _, file := range files {
+				GofmtalMain(file, formatWriter)
+			}
+		}
+	}
+	return
+}
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "gofmtal",
-	Short: "A brief description of your application",
+	Short: "gofmtal is extended source code functionality in comments to gofmt.",
 	Long:  "",
 	Args:  cobra.MinimumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		// TODO: 複数ファイルやディレクトリ指定したときの対応
-		for _, arg := range args {
-			println("arg is " + arg)
-			switch info, err := os.Stat(arg); {
-			case err != nil:
-				return err
-			case !info.IsDir():
-				println("!info.IsDir():")
-				GofmtalMain(arg, os.Stdout)
-			default:
-				var files []string
-				err = filepath.WalkDir(arg, func(path string, d fs.DirEntry, err error) error {
-					if !d.IsDir() {
-						files = append(files, path)
-					}
-					return err
-				})
-
-				println(info.Name())
-				for _, f := range files {
-					if isGoFile(f) {
-						println(f + " is in files.")
-					}
-				}
-				for _, file := range files {
-					GofmtalMain(file, os.Stdout)
-				}
-			}
-		}
-		return
-	},
+	RunE:  runE,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
