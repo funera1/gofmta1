@@ -8,8 +8,11 @@ import (
 	"go/doc/comment"
 	"go/format"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -43,9 +46,18 @@ func FormatCode(filename string) (formattedCode string, err error) {
 	return
 }
 
+func isGoFile(filename string) bool {
+	return strings.HasSuffix(filename, ".go")
+}
+
 func GofmtalMain(targetfile string, writer io.Writer) (err error) {
+	if !isGoFile(targetfile) {
+		fmt.Printf("%s is not GoFile.\n", targetfile)
+		return
+	}
 	formattedCode, err := FormatCode(targetfile)
 	if err != nil {
+		println(targetfile + "s formatt is miss.")
 		return
 	}
 	fmt.Fprintln(writer, formattedCode)
@@ -60,8 +72,34 @@ var rootCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		// TODO: 複数ファイルやディレクトリ指定したときの対応
-		targetfile := args[0]
-		GofmtalMain(targetfile, os.Stdout)
+		for _, arg := range args {
+			println("arg is " + arg)
+			switch info, err := os.Stat(arg); {
+			case err != nil:
+				return err
+			case !info.IsDir():
+				println("!info.IsDir():")
+				GofmtalMain(arg, os.Stdout)
+			default:
+				var files []string
+				err = filepath.WalkDir(arg, func(path string, d fs.DirEntry, err error) error {
+					if !d.IsDir() {
+						files = append(files, path)
+					}
+					return err
+				})
+
+				println(info.Name())
+				for _, f := range files {
+					if isGoFile(f) {
+						println(f + " is in files.")
+					}
+				}
+				for _, file := range files {
+					GofmtalMain(file, os.Stdout)
+				}
+			}
+		}
 		return
 	},
 }
