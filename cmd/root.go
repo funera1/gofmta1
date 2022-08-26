@@ -11,15 +11,17 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
 
 // コードに対しフォーマットを掛けた文字列を返す
-func FormatCode(filename string) (formattedCode string, err error) {
+func FormatCode(filename string) (string, error) {
 	// ファイルの中身を取得
 	b, err := os.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
 	code := string(b)
 
 	// コード中のソースコードを抜き出しフォーマットをかける
@@ -38,28 +40,32 @@ func FormatCode(filename string) (formattedCode string, err error) {
 	// コード全体に対してフォーマットをかける
 	var pr comment.Printer
 	b, err = format.Source(pr.Comment(doc))
-	formattedCode = string(b)
-	return
+	if err != nil {
+		return "", err
+	}
+	formattedCode := string(b)
+	return formattedCode, nil
 }
 
 func IsGoFile(filename string) bool {
-	return strings.HasSuffix(filename, ".go")
+	return (filepath.Ext(filename) == ".go")
 }
 
-func GofmtalMain(targetfile string, writer io.Writer) (err error) {
+func GofmtalMain(targetfile string, writer io.Writer) error {
 	// Gofileでないならフォーマットかけない
 	if !IsGoFile(targetfile) {
-		return
+		// TODO: これでいいのか？
+		return nil
 	}
 	formattedCode, err := FormatCode(targetfile)
 	if err != nil {
-		return
+		return err
 	}
 	fmt.Fprintln(writer, formattedCode)
-	return
+	return nil
 }
 
-func runE(cmd *cobra.Command, args []string) (err error) {
+func runE(cmd *cobra.Command, args []string) error {
 	formatWriter := os.Stdout
 	for _, arg := range args {
 		switch info, err := os.Stat(arg); {
@@ -77,11 +83,14 @@ func runE(cmd *cobra.Command, args []string) (err error) {
 				return err
 			})
 			for _, file := range files {
-				GofmtalMain(file, formatWriter)
+				err := GofmtalMain(file, formatWriter)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
-	return
+	return nil
 }
 
 // rootCmd represents the base command when called without any subcommands
