@@ -9,7 +9,6 @@ import (
 	"go/format"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,10 +19,7 @@ import (
 // コードに対しフォーマットを掛けた文字列を返す
 func FormatCode(filename string) (formattedCode string, err error) {
 	// ファイルの中身を取得
-	b, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return
-	}
+	b, err := os.ReadFile(filename)
 	code := string(b)
 
 	// コード中のソースコードを抜き出しフォーマットをかける
