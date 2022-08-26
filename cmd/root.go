@@ -65,7 +65,8 @@ func GofmtalMain(filename string, writer io.Writer) error {
 }
 
 func runE(cmd *cobra.Command, args []string) error {
-	formatWriter := os.Stdout
+	var out io.Writer
+	out = os.Stdout
 	for _, arg := range args {
 		switch info, err := os.Stat(arg); {
 		case err != nil:
@@ -75,7 +76,7 @@ func runE(cmd *cobra.Command, args []string) error {
 			if !IsGoFile(arg) {
 				continue
 			}
-			GofmtalMain(arg, formatWriter)
+			GofmtalMain(arg, out)
 
 		default:
 			// ディレクトリ下のすべてのファイルをfilesに追加する
@@ -91,7 +92,7 @@ func runE(cmd *cobra.Command, args []string) error {
 				if !IsGoFile(file) {
 					continue
 				}
-				err := GofmtalMain(file, formatWriter)
+				err := GofmtalMain(file, out)
 				if err != nil {
 					return err
 				}
