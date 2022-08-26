@@ -17,7 +17,6 @@ import (
 
 // return formatted code
 func FormatCode(filename string) (string, error) {
-	// ファイルの中身を取得
 	b, err := os.ReadFile(filename)
 	if err != nil {
 		return "", err
@@ -56,7 +55,12 @@ func GofmtalMain(filename string, writer io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(writer, formattedCode)
+
+	_, err = fmt.Fprintln(writer, formattedCode)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
