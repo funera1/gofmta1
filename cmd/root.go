@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// コードに対しフォーマットを掛けた文字列を返す
+// return formatted code
 func FormatCode(filename string) (string, error) {
 	// ファイルの中身を取得
 	b, err := os.ReadFile(filename)
@@ -51,13 +51,8 @@ func IsGoFile(filename string) bool {
 	return (filepath.Ext(filename) == ".go")
 }
 
-func GofmtalMain(targetfile string, writer io.Writer) error {
-	// Gofileでないならフォーマットかけない
-	if !IsGoFile(targetfile) {
-		// TODO: これでいいのか？
-		return nil
-	}
-	formattedCode, err := FormatCode(targetfile)
+func GofmtalMain(filename string, writer io.Writer) error {
+	formattedCode, err := FormatCode(filename)
 	if err != nil {
 		return err
 	}
@@ -72,7 +67,12 @@ func runE(cmd *cobra.Command, args []string) error {
 		case err != nil:
 			return err
 		case !info.IsDir():
+			// skip not gofile
+			if !IsGoFile(arg) {
+				continue
+			}
 			GofmtalMain(arg, formatWriter)
+
 		default:
 			// ディレクトリ下のすべてのファイルをfilesに追加する
 			var files []string
@@ -83,6 +83,10 @@ func runE(cmd *cobra.Command, args []string) error {
 				return err
 			})
 			for _, file := range files {
+				// skip not gofile
+				if !IsGoFile(file) {
+					continue
+				}
 				err := GofmtalMain(file, formatWriter)
 				if err != nil {
 					return err
