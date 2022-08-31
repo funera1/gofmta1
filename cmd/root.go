@@ -52,6 +52,20 @@ func GetAst(filename string) (*ast.File, *token.FileSet, error) {
 	return f, fset, nil
 }
 
+func TrimCommentMarker(comment string) (string, string) {
+	var commentMarker string
+	if strings.HasPrefix(comment, "//") {
+		comment = strings.TrimLeft(comment, "//")
+		commentMarker = "//"
+	} else {
+		comment = strings.TrimLeft(comment, "/*")
+		comment = strings.TrimRight(comment, "*/")
+		commentMarker = "/*"
+	}
+	comment = strings.TrimLeft(comment, "\t")
+	return comment, commentMarker
+}
+
 // 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
 func processFile(filename string) error {
 	// TODO: fはわかりにくそう
@@ -70,11 +84,7 @@ func processFile(filename string) error {
 			fmt.Println("before format: " + cmnt.Text)
 
 			// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
-			// TODO: 関数化する
-			c := strings.TrimLeft(cmnt.Text, "/*")
-			c = strings.TrimRight(c, "*/")
-			c = strings.Trim(c, "\t")
-			println(c)
+			c, commentMarker := TrimCommentMarker(cmnt.Text)
 			doc := p.Parse(c)
 
 			// cmntからCodeを抜き出しその部分にだけフォーマットかける
@@ -97,10 +107,13 @@ func processFile(filename string) error {
 
 			// TODO: tabの個数とかの調整をする必要がある
 			c = string(b)
-			c = strings.Trim(c, "\t")
 			c = strings.Trim(c, "\n")
 			// TODO: もとのコメントマーカーを覚えておいてそれに戻す
-			c = "/*\n" + c + "\n*/"
+			if commentMarker == "//" {
+				c = "// " + c
+			} else {
+				c = "/*\n" + c + "\n*/"
+			}
 			fmt.Println(c)
 			// :EYE:
 			cmnt.Text = c
