@@ -5,12 +5,12 @@ gofmtalはgofmtの機能に加え、コメント内のコードにもフォー�
 ## インストール
 Goのバージョンによってインストール方法が異なります
 
-** Go 1.16未満 **
+**Go 1.16未満**
 ```
 $ go get -u github.com/funera1/gofmtal
 ```
 
-** Go 1.16以上 **
+**Go 1.16以上**
 ```
 $ go install github.com/funera1/gofmtal@latest
 ```
