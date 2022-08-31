@@ -5,8 +5,11 @@ package cmd
 
 import (
 	"fmt"
+	"go/ast"
 	"go/doc/comment"
 	"go/format"
+	"go/parser"
+	"go/token"
 	"io"
 	"io/fs"
 	"os"
@@ -15,68 +18,136 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// return formatted code
-func FormatCode(filename string) (string, error) {
-	b, err := os.ReadFile(filename)
+func GetAst(filename string) (*ast.File, *token.FileSet, error) {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
 	if err != nil {
-		return "", err
+		return nil, nil, err
 	}
-	code := string(b)
-
-	// コード中のソースコードを抜き出しフォーマットをかける
-	var p comment.Parser
-	doc := p.Parse(code)
-	for _, c := range doc.Content {
-		switch c := c.(type) {
-		case *comment.Code:
-			src, err := format.Source([]byte(c.Text))
-			if err == nil {
-				c.Text = string(src)
-			}
-		}
-	}
-
-	// コード全体に対してフォーマットをかける
-	var pr comment.Printer
-	b, err = format.Source(pr.Comment(doc))
-	if err != nil {
-		return "", err
-	}
-	formattedCode := string(b)
-	return formattedCode, nil
+	return f, fset, nil
 }
+
+// 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
+func processFile(filename string) error {
+	f, fset, err := GetAst(filename)
+	if err != nil {
+		return err
+	}
+
+	// TODO: めちゃくちゃややこしいのでわかりやすくする
+	// cmnts: astからcommentGroupを抜き出したもの
+	// cmnt: commentGroupからcommnetを抜き出したもの
+	var p comment.Parser
+	for i, cmnts := range f.Comments {
+		for j, cmnt := range cmnts.List {
+			cmntText := cmnt.Text
+			doc := p.Parse(cmntText)
+
+			// cmntからCodeを抜き出しその部分にだけフォーマットかける
+			for _, c := range doc.Content {
+				switch c := c.(type) {
+				case *comment.Code:
+					src, err := format.Source([]byte(c.Text))
+					if err != nil {
+						return err
+					}
+					c.Text = string(src)
+				}
+			}
+
+			var pr comment.Printer
+			b, err := format.Source(pr.Comment(doc))
+			if err != nil {
+				return err
+			}
+
+			cmnt.Text = string(b)
+			cmnts.List[j] = cmnt
+		}
+
+		f.Comments[i] = cmnts
+	}
+
+	// TODO: 多分fsetが原因だが、出力するときにコメントがちょっとずれる
+	format.Node(os.Stdout, fset, f)
+	return nil
+}
+
+// return formatted code
+// func FormatCode(filename string) (string, error) {
+// 	b, err := os.ReadFile(filename)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	code := string(b)
+//
+// 	// コード中のソースコードを抜き出しフォーマットをかける
+// 	var p comment.Parser
+// 	doc := p.Parse(code)
+// 	for _, c := range doc.Content {
+// 		switch c := c.(type) {
+// 		case *comment.Code:
+// 			src, err := format.Source([]byte(c.Text))
+// 			if err != nil {
+// 				return "", err
+// 			}
+// 			c.Text = string(src)
+// 		}
+// 	}
+//
+// 	// コード全体に対してフォーマットをかける
+// 	var pr comment.Printer
+// 	b, err = format.Source(pr.Comment(doc))
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	formattedCode := string(b)
+// 	return formattedCode, nil
+// }
 
 func IsGoFile(filename string) bool {
 	return (filepath.Ext(filename) == ".go")
 }
 
 func GofmtalMain(filename string, writer io.Writer) error {
-	formattedCode, err := FormatCode(filename)
+	// formattedCode, err := processFile(filename)
+	err := processFile(filename)
 	if err != nil {
 		return err
 	}
 
-	_, err = fmt.Fprintln(writer, formattedCode)
-	if err != nil {
-		return err
-	}
+	// _, err = fmt.Fprintln(writer, formattedCode)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
 
 func runE(cmd *cobra.Command, args []string) error {
+	// TODO: 自由に指定できるようにする
 	var out io.Writer
 	out = os.Stdout
+
+	var errs []error
+
 	for _, arg := range args {
 		switch info, err := os.Stat(arg); {
+
 		case err != nil:
-			return err
+			errs = append(errs, err)
+			continue
+
 		case !info.IsDir():
 			// skip not gofile
 			if !IsGoFile(arg) {
 				continue
 			}
-			GofmtalMain(arg, out)
+			err := GofmtalMain(arg, out)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
 
 		default:
 			// ディレクトリ下のすべてのファイルをfilesに追加する
@@ -87,6 +158,12 @@ func runE(cmd *cobra.Command, args []string) error {
 				}
 				return err
 			})
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+
+			// TODO: 79行目と同じ処理なのでまとめたい
 			for _, file := range files {
 				// skip not gofile
 				if !IsGoFile(file) {
@@ -94,10 +171,14 @@ func runE(cmd *cobra.Command, args []string) error {
 				}
 				err := GofmtalMain(file, out)
 				if err != nil {
-					return err
+					errs = append(errs, err)
+					continue
 				}
 			}
 		}
+	}
+	for _, err := range errs {
+		fmt.Fprintln(os.Stderr, err)
 	}
 	return nil
 }
@@ -107,7 +188,6 @@ var rootCmd = &cobra.Command{
 	Use:   "gofmtal",
 	Short: "gofmtal is extended source code functionality in comments to gofmt.",
 	Long:  "",
-	Args:  cobra.MinimumNArgs(1),
 	RunE:  runE,
 }
 
@@ -116,6 +196,7 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
+		// fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
@@ -129,5 +210,5 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
