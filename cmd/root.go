@@ -40,8 +40,7 @@ func processFile(filename string) error {
 	var p comment.Parser
 	for i, cmnts := range f.Comments {
 		for j, cmnt := range cmnts.List {
-			cmntText := cmnt.Text
-			doc := p.Parse(cmntText)
+			doc := p.Parse(cmnt.Text)
 
 			// cmntからCodeを抜き出しその部分にだけフォーマットかける
 			for _, c := range doc.Content {
@@ -64,7 +63,7 @@ func processFile(filename string) error {
 			cmnt.Text = string(b)
 			cmnts.List[j] = cmnt
 		}
-
+		fmt.Println(cmnts)
 		f.Comments[i] = cmnts
 	}
 
