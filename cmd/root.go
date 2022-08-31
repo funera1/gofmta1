@@ -105,17 +105,19 @@ func processFile(filename string) error {
 				return err
 			}
 
-			// TODO: tabの個数とかの調整をする必要がある
 			c = string(b)
+			// 改行するとコメントがずれるので削除
 			c = strings.Trim(c, "\n")
-			// TODO: もとのコメントマーカーを覚えておいてそれに戻す
+
+			// コメントマーカーをつけ直す
 			if commentMarker == "//" {
 				c = "// " + c
 			} else {
 				c = "/*\n" + c + "\n*/"
 			}
+
+			// debug
 			fmt.Println(c)
-			// :EYE:
 			cmnt.Text = c
 			cmnts.List[j] = cmnt
 		}
