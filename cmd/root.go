@@ -14,9 +14,34 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+// for debug
+func DbgFset(fset *token.FileSet) {
+	println("DEBUG: fset")
+	fset.Iterate(
+		func(f *token.File) bool {
+			if f == nil {
+				return false
+			}
+			fmt.Printf("name is %s\n", f.Name())
+			fmt.Printf("base is %d\n", f.Base())
+			fmt.Printf("size is %d\n", f.Size())
+			return true
+		},
+	)
+}
+
+// for debug
+func DbgComments(cmnts *ast.CommentGroup) {
+	println("DEBUG: cmnts")
+	for _, cmnt := range cmnts.List {
+		fmt.Println(cmnt.Text)
+	}
+}
 
 func GetAst(filename string) (*ast.File, *token.FileSet, error) {
 	fset := token.NewFileSet()
@@ -29,6 +54,7 @@ func GetAst(filename string) (*ast.File, *token.FileSet, error) {
 
 // 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
 func processFile(filename string) error {
+	// TODO: fはわかりにくそう
 	f, fset, err := GetAst(filename)
 	if err != nil {
 		return err
@@ -40,7 +66,16 @@ func processFile(filename string) error {
 	var p comment.Parser
 	for i, cmnts := range f.Comments {
 		for j, cmnt := range cmnts.List {
-			doc := p.Parse(cmnt.Text)
+			fmt.Printf("%d, %d: \n", i, j)
+			fmt.Println("before format: " + cmnt.Text)
+
+			// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
+			// TODO: 関数化する
+			c := strings.TrimLeft(cmnt.Text, "/*")
+			c = strings.TrimRight(c, "*/")
+			c = strings.Trim(c, "\t")
+			println(c)
+			doc := p.Parse(c)
 
 			// cmntからCodeを抜き出しその部分にだけフォーマットかける
 			for _, c := range doc.Content {
@@ -60,13 +95,22 @@ func processFile(filename string) error {
 				return err
 			}
 
-			cmnt.Text = string(b)
+			// TODO: tabの個数とかの調整をする必要がある
+			c = string(b)
+			c = strings.Trim(c, "\t")
+			c = strings.Trim(c, "\n")
+			// TODO: もとのコメントマーカーを覚えておいてそれに戻す
+			c = "/*\n" + c + "\n*/"
+			fmt.Println(c)
+			// :EYE:
+			cmnt.Text = c
 			cmnts.List[j] = cmnt
 		}
-		fmt.Println(cmnts)
+
 		f.Comments[i] = cmnts
 	}
 
+	ast.Print(fset, f)
 	// TODO: 多分fsetが原因だが、出力するときにコメントがちょっとずれる
 	format.Node(os.Stdout, fset, f)
 	return nil
