@@ -19,30 +19,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// for debug
-func DbgFset(fset *token.FileSet) {
-	println("DEBUG: fset")
-	fset.Iterate(
-		func(f *token.File) bool {
-			if f == nil {
-				return false
-			}
-			fmt.Printf("name is %s\n", f.Name())
-			fmt.Printf("base is %d\n", f.Base())
-			fmt.Printf("size is %d\n", f.Size())
-			return true
-		},
-	)
-}
-
-// for debug
-func DbgComments(cmnts *ast.CommentGroup) {
-	println("DEBUG: cmnts")
-	for _, cmnt := range cmnts.List {
-		fmt.Println(cmnt.Text)
-	}
-}
-
 func GetAst(filename string) (*ast.File, *token.FileSet, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
