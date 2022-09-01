@@ -1,0 +1,12 @@
+package main
+
+/*
+[google]https://google.com
+
+	func main() {
+		int a
+	}
+*/
+func main() {
+	var a int
+}
