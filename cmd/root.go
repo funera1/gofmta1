@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -27,8 +28,23 @@ func GetAst(filename string) (*ast.File, *token.FileSet, error) {
 	return f, fset, nil
 }
 
+func TrimCommentMarker(comment string) (string, string) {
+	var commentMarker string
+	if strings.HasPrefix(comment, "//") {
+		comment = strings.TrimLeft(comment, "//")
+		commentMarker = "//"
+	} else {
+		comment = strings.TrimLeft(comment, "/*")
+		comment = strings.TrimRight(comment, "*/")
+		commentMarker = "/*"
+	}
+	comment = strings.TrimLeft(comment, "\t")
+	return comment, commentMarker
+}
+
 // 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
 func processFile(filename string) error {
+	// TODO: fはわかりにくそう
 	f, fset, err := GetAst(filename)
 	if err != nil {
 		return err
@@ -40,8 +56,9 @@ func processFile(filename string) error {
 	var p comment.Parser
 	for i, cmnts := range f.Comments {
 		for j, cmnt := range cmnts.List {
-			cmntText := cmnt.Text
-			doc := p.Parse(cmntText)
+			// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
+			c, commentMarker := TrimCommentMarker(cmnt.Text)
+			doc := p.Parse(c)
 
 			// cmntからCodeを抜き出しその部分にだけフォーマットかける
 			for _, c := range doc.Content {
@@ -61,7 +78,18 @@ func processFile(filename string) error {
 				return err
 			}
 
-			cmnt.Text = string(b)
+			c = string(b)
+			// 改行するとコメントがずれるので削除
+			c = strings.Trim(c, "\n")
+
+			// コメントマーカーをつけ直す
+			if commentMarker == "//" {
+				c = "// " + c
+			} else {
+				c = "/*\n" + c + "\n*/"
+			}
+
+			cmnt.Text = c
 			cmnts.List[j] = cmnt
 		}
 
