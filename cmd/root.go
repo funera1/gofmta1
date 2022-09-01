@@ -56,9 +56,6 @@ func processFile(filename string) error {
 	var p comment.Parser
 	for i, cmnts := range f.Comments {
 		for j, cmnt := range cmnts.List {
-			fmt.Printf("%d, %d: \n", i, j)
-			fmt.Println("before format: " + cmnt.Text)
-
 			// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
 			c, commentMarker := TrimCommentMarker(cmnt.Text)
 			doc := p.Parse(c)
@@ -92,8 +89,6 @@ func processFile(filename string) error {
 				c = "/*\n" + c + "\n*/"
 			}
 
-			// debug
-			fmt.Println(c)
 			cmnt.Text = c
 			cmnts.List[j] = cmnt
 		}
@@ -101,7 +96,6 @@ func processFile(filename string) error {
 		f.Comments[i] = cmnts
 	}
 
-	ast.Print(fset, f)
 	// TODO: 多分fsetが原因だが、出力するときにコメントがちょっとずれる
 	format.Node(os.Stdout, fset, f)
 	return nil
