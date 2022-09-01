@@ -4,6 +4,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/doc/comment"
@@ -18,6 +19,19 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
+// var (
+// 	// main operation modes
+// 	list        = flag.Bool("l", false, "list files whose formatting differs from gofmt's")
+// 	write       = flag.Bool("w", false, "write result to (source) file instead of stdout")
+// 	rewriteRule = flag.String("r", "", "rewrite rule (e.g., 'a[b:len(a)] -> a[b:]')")
+// 	simplifyAST = flag.Bool("s", false, "simplify code")
+// 	doDiff      = flag.Bool("d", false, "display diffs instead of rewriting files")
+// 	allErrors   = flag.Bool("e", false, "report all errors (not just the first 10 on different lines)")
+//
+// 	// debugging
+// 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to this file")
+// )
 
 func GetAst(filename string) (*ast.File, *token.FileSet, error) {
 	fset := token.NewFileSet()
@@ -157,6 +171,17 @@ func runE(cmd *cobra.Command, args []string) error {
 	var out io.Writer
 	out = os.Stdout
 
+	list, _ := cmd.Flags().GetBool("list")
+	if list {
+		println("list")
+	} else {
+		println("not list")
+	}
+
+	flag.Parse()
+	args = flag.Args()
+	fmt.Println(args)
+
 	var errs []error
 
 	for _, arg := range args {
@@ -238,5 +263,16 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	// debugging
+
+	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().BoolP("list", "l", false, "list files whose formatting differs from gofmt's")
+	rootCmd.Flags().BoolP("write", "w", false, "write result to (source) file instead of stdout")
+	rootCmd.Flags().StringP("rewriteRule", "r", "", "rewrite rule (e.g., 'a[b:len(a)] -> a[b:]')")
+	rootCmd.Flags().BoolP("simplifyAST", "s", false, "simplify code")
+	rootCmd.Flags().BoolP("doDiff", "d", false, "display diffs instead of rewriting files")
+	rootCmd.Flags().BoolP("allErrors", "e", false, "report all errors (not just the first 10 on different lines)")
+
+	// rootCmd.Flags().StringP("cpuprofile", "cpuprofile", "", "write cpu profile to this file")
 }
