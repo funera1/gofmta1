@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 var (
@@ -64,21 +66,33 @@ func Test(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// add larger examples
-	match = append(match, "root.go", "root_test.go")
-
 	for _, in := range match {
 		name := filepath.Base(in)
-		println(name)
 		t.Run(name, func(t *testing.T) {
 			out := in // for files where input and output are identical
 			if strings.HasSuffix(in, ".input") {
 				out = in[:len(in)-len(".input")] + ".golden"
 			}
-			runTest(t, in, out)
-			if in != out && !t.Failed() {
-				// Check idempotence.
-				runTest(t, out, out)
+			// runTest(t, in, out)
+			// if in != out && !t.Failed() {
+			// 	// Check idempotence.
+			// 	runTest(t, out, out)
+			// }
+
+			got, err := processFile(in)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
+			want, err := os.ReadFile(out)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
+			if diff := cmp.Diff(got, want); diff != "" {
+				t.Error(diff)
 			}
 		})
 	}
