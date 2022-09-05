@@ -4,6 +4,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
 	"go/doc/comment"
@@ -43,11 +44,11 @@ func TrimCommentMarker(comment string) (string, string) {
 }
 
 // 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
-func processFile(filename string) error {
+func processFile(filename string) (string, error) {
 	// TODO: fはわかりにくそう
 	f, fset, err := GetAst(filename)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// TODO: めちゃくちゃややこしいのでわかりやすくする
@@ -66,7 +67,7 @@ func processFile(filename string) error {
 				case *comment.Code:
 					src, err := format.Source([]byte(c.Text))
 					if err != nil {
-						return err
+						return "", err
 					}
 					c.Text = string(src)
 				}
@@ -75,7 +76,7 @@ func processFile(filename string) error {
 			var pr comment.Printer
 			b, err := format.Source(pr.Comment(doc))
 			if err != nil {
-				return err
+				return "", err
 			}
 
 			c = string(b)
@@ -97,8 +98,13 @@ func processFile(filename string) error {
 	}
 
 	// TODO: 多分fsetが原因だが、出力するときにコメントがちょっとずれる
-	format.Node(os.Stdout, fset, f)
-	return nil
+	// TODO: 一旦string型に出力して関数でそれを返す
+	var buf bytes.Buffer
+	err = format.Node(&buf, fset, f)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 // return formatted code
@@ -139,15 +145,15 @@ func IsGoFile(filename string) bool {
 
 func GofmtalMain(filename string, writer io.Writer) error {
 	// formattedCode, err := processFile(filename)
-	err := processFile(filename)
+	formattedCode, err := processFile(filename)
 	if err != nil {
 		return err
 	}
 
-	// _, err = fmt.Fprintln(writer, formattedCode)
-	// if err != nil {
-	// 	return err
-	// }
+	_, err = fmt.Fprintln(writer, formattedCode)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
