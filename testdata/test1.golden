@@ -4,7 +4,7 @@ package main
 [google]https://google.com
 
 	func main() {
-		int a;;;
+		int a
 	}
 */
 func main() {

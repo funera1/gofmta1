@@ -23,15 +23,21 @@ func runTest(t *testing.T, in, out string) {
 		t.Error(err)
 		return
 	}
-	// got := processFile(in)
+
+	tmp, err := processFile(in)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	got := []byte(tmp)
+
 	want, err := os.ReadFile(out)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	var buf bytes.Buffer
-	if got := buf.Bytes(); !bytes.Equal(got, want) {
+	if !bytes.Equal(got, want) {
 		// if *update {
 		// 	if in != out {
 		// 		if err := os.WriteFile(out, got, 0666); err != nil {
@@ -45,9 +51,9 @@ func runTest(t *testing.T, in, out string) {
 
 		// t.Errorf("(gofmt %s) != %s (see %s.gofmt)\n%s", in, out, in,
 		// 	diff.Diff("expected", want, "got", got))
-		if err := os.WriteFile(in+".gofmt", got, 0666); err != nil {
-			t.Error(err)
-		}
+		// if err := os.WriteFile(in+".gofmt", got, 0666); err != nil {
+		// 	t.Error(err)
+		// }
 	}
 }
 
@@ -63,6 +69,7 @@ func Test(t *testing.T) {
 
 	for _, in := range match {
 		name := filepath.Base(in)
+		println(name)
 		t.Run(name, func(t *testing.T) {
 			out := in // for files where input and output are identical
 			if strings.HasSuffix(in, ".input") {
