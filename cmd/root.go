@@ -174,9 +174,9 @@ func runE(cmd *cobra.Command, args []string) error {
 
 		case !info.IsDir():
 			// skip not gofile
-			if !IsGoFile(arg) {
-				continue
-			}
+			// if !IsGoFile(arg) {
+			// 	continue
+			// }
 			err := GofmtalMain(arg, out)
 			if err != nil {
 				errs = append(errs, err)
