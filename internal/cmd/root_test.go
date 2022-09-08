@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/funera1/gofmtal/internal/format"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -33,7 +34,7 @@ func Test(t *testing.T) {
 				out = in[:len(in)-len(".input")] + ".golden"
 			}
 
-			got, err := processFile(in)
+			got, err := format.ProcessFile(in)
 			if err != nil {
 				t.Error(err)
 				return
