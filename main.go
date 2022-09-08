@@ -3,8 +3,12 @@ Copyright © 2022 funera1
 */
 package main
 
-import "github.com/funera1/gofmtal/cmd"
+import (
+	"os"
+
+	"github.com/funera1/gofmtal/internal/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	os.Exit(cmd.Execute())
 }
