@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"go/doc/comment"
 	"go/format"
-	"path/filepath"
 	"strings"
 )
 
@@ -21,7 +20,7 @@ func ProcessFile(filename string) (string, error) {
 	// cmnt: commentGroupからcommnetを抜き出したもの
 	for i, cmnts := range file.Syntax.Comments {
 		for j, cmnt := range cmnts.List {
-			formattedComment, err := FormatCodeInComment(cmnt.Text)
+			formattedComment, err := formatCodeInComment(cmnt.Text)
 			if err != nil {
 				return "", err
 			}
@@ -43,10 +42,10 @@ func ProcessFile(filename string) (string, error) {
 }
 
 // FormatCodeInComment はコメントを与えて、フォーマットしたコメントを返す
-func FormatCodeInComment(commentString string) (string, error) {
+func formatCodeInComment(commentString string) (string, error) {
 	var p comment.Parser
 	// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
-	c, commentMarker := TrimCommentMarker(commentString)
+	c, commentMarker := trimCommentMarker(commentString)
 	doc := p.Parse(c)
 
 	// commentStringからCodeを抜き出しその部分にだけフォーマットかける
@@ -87,7 +86,7 @@ TrimCommentMarker はコメントからコメントマーカ(// や　/*)を取�
 pkg.go.dev/go/doc/commentによると(commemt.Parser).Parseの引数にコメントを与えるとき
 コメントマーカを削除してから与えることになっているため
 */
-func TrimCommentMarker(comment string) (string, string) {
+func trimCommentMarker(comment string) (string, string) {
 	var commentMarker string
 	if strings.HasPrefix(comment, "//") {
 		comment = strings.TrimLeft(comment, "//")
@@ -99,9 +98,4 @@ func TrimCommentMarker(comment string) (string, string) {
 	}
 	comment = strings.TrimLeft(comment, "\t")
 	return comment, commentMarker
-}
-
-// TODO: format関係ないし、この関数いる？
-func IsGoFile(filename string) bool {
-	return (filepath.Ext(filename) == ".go")
 }
