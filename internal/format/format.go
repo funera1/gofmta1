@@ -57,9 +57,6 @@ func formatCodeInComment(commentString string) (string, error) {
 		case *comment.Code:
 			src, err := format.Source([]byte(c.Text))
 
-			// DEBUG
-			// log.Println(string(src))
-
 			if err != nil {
 				log.Printf("miss format.Source(%s)\n", []byte(c.Text))
 				return "", err
@@ -70,13 +67,8 @@ func formatCodeInComment(commentString string) (string, error) {
 
 	// コメントから抜き出したコードについてフォーマットをかける
 	var pr comment.Printer
-	// b, err := format.Source(pr.Comment(doc))
 	b := pr.Comment(doc)
 	log.Println(string(b))
-	// if err != nil {
-	// 	log.Printf("miss format.Source(%s)\n", pr.Comment(doc))
-	// 	return "", err
-	// }
 	formattedComment := string(b)
 
 	// 改行するとコメントがずれるので削除
