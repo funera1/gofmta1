@@ -22,13 +22,18 @@ import (
 
 func GetAst(filename string) (*ast.File, *token.FileSet, error) {
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
+	astFile, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
 	if err != nil {
 		return nil, nil, err
 	}
-	return f, fset, nil
+	return astFile, fset, nil
 }
 
+/*
+TrimCommentMarker はコメントからコメントマーカ(// や　/*)を取り除く
+pkg.go.dev/go/doc/commentによると(commemt.Parser).Parseの引数にコメントを与えるとき
+コメントマーカを削除してから与えることになっているため
+*/
 func TrimCommentMarker(comment string) (string, string) {
 	var commentMarker string
 	if strings.HasPrefix(comment, "//") {
@@ -43,101 +48,79 @@ func TrimCommentMarker(comment string) (string, string) {
 	return comment, commentMarker
 }
 
+// FormatCodeInComment はコメントを与えて、フォーマットしたコメントを返す
+func FormatCodeInComment(commentString string) (string, error) {
+	var p comment.Parser
+	// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
+	c, commentMarker := TrimCommentMarker(commentString)
+	doc := p.Parse(c)
+
+	// commentStringからCodeを抜き出しその部分にだけフォーマットかける
+	for _, c := range doc.Content {
+		switch c := c.(type) {
+		case *comment.Code:
+			src, err := format.Source([]byte(c.Text))
+			if err != nil {
+				return "", err
+			}
+			c.Text = string(src)
+		}
+	}
+
+	// コメントから抜き出したコードについてフォーマットをかける
+	var pr comment.Printer
+	b, err := format.Source(pr.Comment(doc))
+	if err != nil {
+		return "", err
+	}
+	formattedComment := string(b)
+
+	// 改行するとコメントがずれるので削除
+	formattedComment = strings.Trim(formattedComment, "\n")
+
+	// コメントマーカーをつけ直す
+	if commentMarker == "//" {
+		formattedComment = "// " + c
+	} else {
+		formattedComment = "/*\n" + c + "\n*/"
+	}
+
+	return formattedComment, nil
+}
+
 // 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
 func processFile(filename string) (string, error) {
 	// TODO: fはわかりにくそう
-	f, fset, err := GetAst(filename)
+	astFile, fset, err := GetAst(filename)
 	if err != nil {
 		return "", err
 	}
 
-	// TODO: めちゃくちゃややこしいのでわかりやすくする
+	// 与えられたファイルからコメントを抜き出してすべてにフォーマットをかけて戻す
 	// cmnts: astからcommentGroupを抜き出したもの
 	// cmnt: commentGroupからcommnetを抜き出したもの
-	var p comment.Parser
-	for i, cmnts := range f.Comments {
+	for i, cmnts := range astFile.Comments {
 		for j, cmnt := range cmnts.List {
-			// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
-			c, commentMarker := TrimCommentMarker(cmnt.Text)
-			doc := p.Parse(c)
-
-			// cmntからCodeを抜き出しその部分にだけフォーマットかける
-			for _, c := range doc.Content {
-				switch c := c.(type) {
-				case *comment.Code:
-					src, err := format.Source([]byte(c.Text))
-					if err != nil {
-						return "", err
-					}
-					c.Text = string(src)
-				}
-			}
-
-			var pr comment.Printer
-			b, err := format.Source(pr.Comment(doc))
+			formattedComment, err := FormatCodeInComment(cmnt.Text)
 			if err != nil {
 				return "", err
 			}
 
-			c = string(b)
-			// 改行するとコメントがずれるので削除
-			c = strings.Trim(c, "\n")
-
-			// コメントマーカーをつけ直す
-			if commentMarker == "//" {
-				c = "// " + c
-			} else {
-				c = "/*\n" + c + "\n*/"
-			}
-
-			cmnt.Text = c
+			// フォーマットしたコメントをもとに戻す
+			cmnt.Text = formattedComment
 			cmnts.List[j] = cmnt
 		}
 
-		f.Comments[i] = cmnts
+		astFile.Comments[i] = cmnts
 	}
 
-	// TODO: 多分fsetが原因だが、出力するときにコメントがちょっとずれる
-	// TODO: 一旦string型に出力して関数でそれを返す
 	var buf bytes.Buffer
-	err = format.Node(&buf, fset, f)
+	err = format.Node(&buf, fset, astFile)
 	if err != nil {
 		return "", err
 	}
 	return buf.String(), nil
 }
-
-// return formatted code
-// func FormatCode(filename string) (string, error) {
-// 	b, err := os.ReadFile(filename)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	code := string(b)
-//
-// 	// コード中のソースコードを抜き出しフォーマットをかける
-// 	var p comment.Parser
-// 	doc := p.Parse(code)
-// 	for _, c := range doc.Content {
-// 		switch c := c.(type) {
-// 		case *comment.Code:
-// 			src, err := format.Source([]byte(c.Text))
-// 			if err != nil {
-// 				return "", err
-// 			}
-// 			c.Text = string(src)
-// 		}
-// 	}
-//
-// 	// コード全体に対してフォーマットをかける
-// 	var pr comment.Printer
-// 	b, err = format.Source(pr.Comment(doc))
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	formattedCode := string(b)
-// 	return formattedCode, nil
-// }
 
 func IsGoFile(filename string) bool {
 	return (filepath.Ext(filename) == ".go")
@@ -173,10 +156,6 @@ func runE(cmd *cobra.Command, args []string) error {
 			continue
 
 		case !info.IsDir():
-			// skip not gofile
-			if !IsGoFile(arg) {
-				continue
-			}
 			err := GofmtalMain(arg, out)
 			if err != nil {
 				errs = append(errs, err)
