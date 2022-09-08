@@ -4,51 +4,73 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"bytes"
+	"fmt"
 	"go/ast"
 	"go/doc/comment"
 	"go/format"
 	"go/parser"
 	"go/token"
-	"log"
+	"io"
+	"io/fs"
 	"os"
-	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-func FormatCode(cmnt *ast.Comment, code string) string {
-	// コメントのソースコードに対しフォーマットをかける
+
+func GetAst(filename string) (*ast.File, *token.FileSet, error) {
+	fset := token.NewFileSet()
+	astFile, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
+	if err != nil {
+		return nil, nil, err
+	}
+	return astFile, fset, nil
+}
+
+/*
+TrimCommentMarker はコメントからコメントマーカ(// や　/*)を取り除く
+pkg.go.dev/go/doc/commentによると(commemt.Parser).Parseの引数にコメントを与えるとき
+コメントマーカを削除してから与えることになっているため
+*/
+func TrimCommentMarker(comment string) (string, string) {
+	var commentMarker string
+	if strings.HasPrefix(comment, "//") {
+		comment = strings.TrimLeft(comment, "//")
+		commentMarker = "//"
+	} else {
+		comment = strings.TrimLeft(comment, "/*")
+		comment = strings.TrimRight(comment, "*/")
+		commentMarker = "/*"
+	}
+	comment = strings.TrimLeft(comment, "\t")
+	return comment, commentMarker
+}
+
+// FormatCodeInComment はコメントを与えて、フォーマットしたコメントを返す
+func FormatCodeInComment(commentString string) (string, error) {
 	var p comment.Parser
-	doc := p.Parse(cmnt.Text)
+	// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
+	c, commentMarker := TrimCommentMarker(commentString)
+	doc := p.Parse(c)
+
+	// commentStringからCodeを抜き出しその部分にだけフォーマットかける
+
 	for _, c := range doc.Content {
 		switch c := c.(type) {
 		case *comment.Code:
 			src, err := format.Source([]byte(c.Text))
-			if err == nil {
-				c.Text = string(src)
+			if err != nil {
+				return "", err
 			}
+			c.Text = string(src)
 		}
 	}
-	var pr comment.Printer
-	format_cmnt := string(pr.Comment(doc))
-	rune_code := []rune(code)
-	// もとのコメントをフォーマットかけたもので置き換える
-	// 実行するとわかるが、もとのコメントのフォーマットしたコメントの長さが変わるのでこれでは
-	// 置き換えれていない
-	for i, nc := range format_cmnt {
-		rune_code[int(cmnt.Slash)-1+i] = nc
-	}
-	return string(rune_code)
-}
 
-func GetAst(code string) *ast.File {
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "", code, parser.ParseComments)
-	if err != nil {
-		log.Fatalln("Error", err)
-	}
-	return f
-}
+	// コメントから抜き出したコードについてフォーマットをかける
+	var pr comment.Printer
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -80,11 +102,51 @@ to quickly create a Cobra application.`,
 		for _, cmntGrp := range ast.Comments {
 			for _, cmnt := range cmntGrp.List {
 				code = FormatCode(cmnt, code)
+
+			}
+
+
+		default:
+			// ディレクトリ下のすべてのファイルをfilesに追加する
+			var files []string
+			err = filepath.WalkDir(arg, func(path string, d fs.DirEntry, err error) error {
+				if !d.IsDir() {
+					files = append(files, path)
+				}
+				return err
+			})
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+
+			// TODO: 79行目と同じ処理なのでまとめたい
+			for _, file := range files {
+				// skip not gofile
+				if !IsGoFile(file) {
+					continue
+				}
+				err := GofmtalMain(file, out)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
 			}
 		}
+	}
+	for _, err := range errs {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	return nil
+}
 
-		print(code)
-	},
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
+	Use:   "gofmtal",
+	Short: "gofmtal is extended source code functionality in comments to gofmt.",
+	Long:  "",
+	RunE:  runE,
+
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -92,6 +154,7 @@ to quickly create a Cobra application.`,
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
+		// fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
@@ -105,5 +168,5 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
