@@ -30,19 +30,12 @@ func Execute() int {
 	return ExitOK
 }
 
-func GofmtalMain(filename string, writer io.Writer) error {
-	// formattedCode, err := processFile(filename)
-	formattedCode, err := format.ProcessFile(filename)
-	if err != nil {
-		return err
-	}
-
-	_, err = fmt.Fprintln(writer, formattedCode)
-	if err != nil {
-		return err
-	}
-
-	return nil
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
+	Use:   "gofmtal",
+	Short: "gofmtal is extended source code functionality in comments to gofmt.",
+	Long:  "",
+	RunE:  runE,
 }
 
 func runE(cmd *cobra.Command, args []string) error {
@@ -52,6 +45,7 @@ func runE(cmd *cobra.Command, args []string) error {
 
 	var errs []error
 
+	// argがファイルかディレクトリかそれ以外かで場合分け
 	for _, arg := range args {
 		switch info, err := os.Stat(arg); {
 
@@ -69,6 +63,7 @@ func runE(cmd *cobra.Command, args []string) error {
 		default:
 			// ディレクトリ下のすべてのファイルをfilesに追加する
 			var files []string
+
 			err = filepath.WalkDir(arg, func(path string, d fs.DirEntry, err error) error {
 				if !d.IsDir() {
 					files = append(files, path)
@@ -80,12 +75,12 @@ func runE(cmd *cobra.Command, args []string) error {
 				continue
 			}
 
-			// TODO: 79行目と同じ処理なのでまとめたい
 			for _, file := range files {
-				// skip not gofile
-				if !format.IsGoFile(file) {
+				isGofile := bool(filepath.Ext(file) == ".go")
+				if isGofile {
 					continue
 				}
+
 				err := GofmtalMain(file, out)
 				if err != nil {
 					errs = append(errs, err)
@@ -100,10 +95,17 @@ func runE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "gofmtal",
-	Short: "gofmtal is extended source code functionality in comments to gofmt.",
-	Long:  "",
-	RunE:  runE,
+func GofmtalMain(filename string, writer io.Writer) error {
+	// formattedCode, err := processFile(filename)
+	formattedCode, err := format.ProcessFile(filename)
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintln(writer, formattedCode)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
