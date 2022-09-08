@@ -21,7 +21,7 @@ func init() {
 
 func Test(t *testing.T) {
 	// determine input files
-	match, err := filepath.Glob("../testdata/*.input")
+	match, err := filepath.Glob("testdata/*.input")
 	if err != nil {
 		t.Fatal(err)
 	}

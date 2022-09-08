@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"go/doc/comment"
 	"go/format"
+	"log"
 	"strings"
 )
 
 // 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
 func ProcessFile(filename string) (string, error) {
-	// TODO: fはわかりにくそう
 	file, err := Parse(filename)
 	if err != nil {
+		log.Println("miss Parse")
 		return "", err
 	}
 
@@ -22,6 +23,7 @@ func ProcessFile(filename string) (string, error) {
 		for j, cmnt := range cmnts.List {
 			formattedComment, err := formatCodeInComment(cmnt.Text)
 			if err != nil {
+				log.Println("miss formatCodeInComment")
 				return "", err
 			}
 
@@ -36,6 +38,7 @@ func ProcessFile(filename string) (string, error) {
 	var buf bytes.Buffer
 	err = format.Node(&buf, file.Fset, file.Syntax)
 	if err != nil {
+		log.Println("miss format.Node")
 		return "", err
 	}
 	return buf.String(), nil
@@ -53,7 +56,12 @@ func formatCodeInComment(commentString string) (string, error) {
 		switch c := c.(type) {
 		case *comment.Code:
 			src, err := format.Source([]byte(c.Text))
+
+			// DEBUG
+			// log.Println(string(src))
+
 			if err != nil {
+				log.Printf("miss format.Source(%s)\n", []byte(c.Text))
 				return "", err
 			}
 			c.Text = string(src)
@@ -62,10 +70,13 @@ func formatCodeInComment(commentString string) (string, error) {
 
 	// コメントから抜き出したコードについてフォーマットをかける
 	var pr comment.Printer
-	b, err := format.Source(pr.Comment(doc))
-	if err != nil {
-		return "", err
-	}
+	// b, err := format.Source(pr.Comment(doc))
+	b := pr.Comment(doc)
+	log.Println(string(b))
+	// if err != nil {
+	// 	log.Printf("miss format.Source(%s)\n", pr.Comment(doc))
+	// 	return "", err
+	// }
 	formattedComment := string(b)
 
 	// 改行するとコメントがずれるので削除
@@ -73,9 +84,9 @@ func formatCodeInComment(commentString string) (string, error) {
 
 	// コメントマーカーをつけ直す
 	if commentMarker == "//" {
-		formattedComment = "// " + c
+		formattedComment = "// " + formattedComment
 	} else {
-		formattedComment = "/*\n" + c + "\n*/"
+		formattedComment = "/*\n" + formattedComment + "\n*/"
 	}
 
 	return formattedComment, nil

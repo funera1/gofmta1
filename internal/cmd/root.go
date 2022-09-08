@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -24,7 +25,7 @@ const (
 func Execute() int {
 	err := rootCmd.Execute()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stdout, err)
 		return ExitError
 	}
 	return ExitOK
@@ -51,11 +52,13 @@ func runE(cmd *cobra.Command, args []string) error {
 
 		case err != nil:
 			errs = append(errs, err)
+			log.Println("not file or dir")
 			continue
 
 		case !info.IsDir():
 			err := GofmtalMain(arg, out)
 			if err != nil {
+				log.Println("miss GofmtalMain")
 				errs = append(errs, err)
 				continue
 			}
@@ -71,6 +74,7 @@ func runE(cmd *cobra.Command, args []string) error {
 				return err
 			})
 			if err != nil {
+				log.Println("miss filepath.WalkDir")
 				errs = append(errs, err)
 				continue
 			}
@@ -83,6 +87,7 @@ func runE(cmd *cobra.Command, args []string) error {
 
 				err := GofmtalMain(file, out)
 				if err != nil {
+					log.Println("miss GofmtalMain")
 					errs = append(errs, err)
 					continue
 				}
@@ -99,11 +104,13 @@ func GofmtalMain(filename string, writer io.Writer) error {
 	// formattedCode, err := processFile(filename)
 	formattedCode, err := format.ProcessFile(filename)
 	if err != nil {
+		log.Println("miss format.ProcessFile")
 		return err
 	}
 
 	_, err = fmt.Fprintln(writer, formattedCode)
 	if err != nil {
+		log.Println("miss fmt.Fprintln")
 		return err
 	}
 
