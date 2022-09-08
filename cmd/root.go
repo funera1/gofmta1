@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+
 func GetAst(filename string) (*ast.File, *token.FileSet, error) {
 	fset := token.NewFileSet()
 	astFile, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
@@ -56,6 +57,7 @@ func FormatCodeInComment(commentString string) (string, error) {
 	doc := p.Parse(c)
 
 	// commentStringからCodeを抜き出しその部分にだけフォーマットかける
+
 	for _, c := range doc.Content {
 		switch c := c.(type) {
 		case *comment.Code:
@@ -69,98 +71,40 @@ func FormatCodeInComment(commentString string) (string, error) {
 
 	// コメントから抜き出したコードについてフォーマットをかける
 	var pr comment.Printer
-	b, err := format.Source(pr.Comment(doc))
-	if err != nil {
-		return "", err
-	}
-	formattedComment := string(b)
 
-	// 改行するとコメントがずれるので削除
-	formattedComment = strings.Trim(formattedComment, "\n")
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
+	Use:   "gofmtal",
+	Short: "A brief description of your application",
+	Long: `A longer description that spans multiple lines and likely contains
+examples and usage of using your application. For example:
 
-	// コメントマーカーをつけ直す
-	if commentMarker == "//" {
-		formattedComment = "// " + c
-	} else {
-		formattedComment = "/*\n" + c + "\n*/"
-	}
+Cobra is a CLI library for Go that empowers applications.
+This application is a tool to generate the needed files
+to quickly create a Cobra application.`,
+	// Uncomment the following line if your bare application
+	// has an action associated with it:
+	Args: cobra.MinimumNArgs(1),
+	// Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		target := args[0]
 
-	return formattedComment, nil
-}
-
-// 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
-func processFile(filename string) (string, error) {
-	// TODO: fはわかりにくそう
-	astFile, fset, err := GetAst(filename)
-	if err != nil {
-		return "", err
-	}
-
-	// 与えられたファイルからコメントを抜き出してすべてにフォーマットをかけて戻す
-	// cmnts: astからcommentGroupを抜き出したもの
-	// cmnt: commentGroupからcommnetを抜き出したもの
-	for i, cmnts := range astFile.Comments {
-		for j, cmnt := range cmnts.List {
-			formattedComment, err := FormatCodeInComment(cmnt.Text)
-			if err != nil {
-				return "", err
-			}
-
-			// フォーマットしたコメントをもとに戻す
-			cmnt.Text = formattedComment
-			cmnts.List[j] = cmnt
+		// cmntにはgo doc $FILEPATHの出力結果が入力されることを期待
+		b, err := exec.Command("gofmt", target).Output()
+		if err != nil {
+			log.Fatal(err)
 		}
+		code := string(b)
+		ast := GetAst(code)
 
-		astFile.Comments[i] = cmnts
-	}
+		// コメント部分についてのみFormatCodeを適用する
+		// そうしないとコメント内部でないソースコードにフォーマットがかかってしまう
+		for _, cmntGrp := range ast.Comments {
+			for _, cmnt := range cmntGrp.List {
+				code = FormatCode(cmnt, code)
 
-	var buf bytes.Buffer
-	err = format.Node(&buf, fset, astFile)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), nil
-}
-
-func IsGoFile(filename string) bool {
-	return (filepath.Ext(filename) == ".go")
-}
-
-func GofmtalMain(filename string, writer io.Writer) error {
-	// formattedCode, err := processFile(filename)
-	formattedCode, err := processFile(filename)
-	if err != nil {
-		return err
-	}
-
-	_, err = fmt.Fprintln(writer, formattedCode)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func runE(cmd *cobra.Command, args []string) error {
-	// TODO: 自由に指定できるようにする
-	var out io.Writer
-	out = os.Stdout
-
-	var errs []error
-
-	for _, arg := range args {
-		switch info, err := os.Stat(arg); {
-
-		case err != nil:
-			errs = append(errs, err)
-			continue
-
-		case !info.IsDir():
-			err := GofmtalMain(arg, out)
-			if err != nil {
-				errs = append(errs, err)
-				continue
 			}
+
 
 		default:
 			// ディレクトリ下のすべてのファイルをfilesに追加する
@@ -202,6 +146,7 @@ var rootCmd = &cobra.Command{
 	Short: "gofmtal is extended source code functionality in comments to gofmt.",
 	Long:  "",
 	RunE:  runE,
+
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
