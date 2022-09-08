@@ -68,9 +68,9 @@ func FormatCodeInComment(commentString string) (string, error) {
 }
 
 // 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
-func processFile(filename string) (string, error) {
+func ProcessFile(filename string) (string, error) {
 	// TODO: fはわかりにくそう
-	astFile, fset, err := GetAst(filename)
+	file, err := Parse(filename)
 	if err != nil {
 		return "", err
 	}
@@ -78,7 +78,7 @@ func processFile(filename string) (string, error) {
 	// 与えられたファイルからコメントを抜き出してすべてにフォーマットをかけて戻す
 	// cmnts: astからcommentGroupを抜き出したもの
 	// cmnt: commentGroupからcommnetを抜き出したもの
-	for i, cmnts := range astFile.Comments {
+	for i, cmnts := range file.Syntax.Comments {
 		for j, cmnt := range cmnts.List {
 			formattedComment, err := FormatCodeInComment(cmnt.Text)
 			if err != nil {
@@ -90,11 +90,11 @@ func processFile(filename string) (string, error) {
 			cmnts.List[j] = cmnt
 		}
 
-		astFile.Comments[i] = cmnts
+		file.Syntax.Comments[i] = cmnts
 	}
 
 	var buf bytes.Buffer
-	err = format.Node(&buf, fset, astFile)
+	err = format.Node(&buf, file.Fset, file.Syntax)
 	if err != nil {
 		return "", err
 	}

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/funera1/gofmtal/internal/format"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +32,7 @@ func Execute() int {
 
 func GofmtalMain(filename string, writer io.Writer) error {
 	// formattedCode, err := processFile(filename)
-	formattedCode, err := processFile(filename)
+	formattedCode, err := format.ProcessFile(filename)
 	if err != nil {
 		return err
 	}
@@ -82,7 +83,7 @@ func runE(cmd *cobra.Command, args []string) error {
 			// TODO: 79行目と同じ処理なのでまとめたい
 			for _, file := range files {
 				// skip not gofile
-				if !IsGoFile(file) {
+				if !format.IsGoFile(file) {
 					continue
 				}
 				err := GofmtalMain(file, out)

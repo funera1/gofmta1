@@ -17,5 +17,10 @@ func Parse(filename string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return *File{syntax, fset}, nil
+
+	file := &File{
+		Syntax: syntax,
+		Fset:   fset,
+	}
+	return file, nil
 }
