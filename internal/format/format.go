@@ -8,23 +8,38 @@ import (
 	"strings"
 )
 
-/*
-TrimCommentMarker はコメントからコメントマーカ(// や　/*)を取り除く
-pkg.go.dev/go/doc/commentによると(commemt.Parser).Parseの引数にコメントを与えるとき
-コメントマーカを削除してから与えることになっているため
-*/
-func TrimCommentMarker(comment string) (string, string) {
-	var commentMarker string
-	if strings.HasPrefix(comment, "//") {
-		comment = strings.TrimLeft(comment, "//")
-		commentMarker = "//"
-	} else {
-		comment = strings.TrimLeft(comment, "/*")
-		comment = strings.TrimRight(comment, "*/")
-		commentMarker = "/*"
+// 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
+func ProcessFile(filename string) (string, error) {
+	// TODO: fはわかりにくそう
+	file, err := Parse(filename)
+	if err != nil {
+		return "", err
 	}
-	comment = strings.TrimLeft(comment, "\t")
-	return comment, commentMarker
+
+	// 与えられたファイルからコメントを抜き出してすべてにフォーマットをかけて戻す
+	// cmnts: astからcommentGroupを抜き出したもの
+	// cmnt: commentGroupからcommnetを抜き出したもの
+	for i, cmnts := range file.Syntax.Comments {
+		for j, cmnt := range cmnts.List {
+			formattedComment, err := FormatCodeInComment(cmnt.Text)
+			if err != nil {
+				return "", err
+			}
+
+			// フォーマットしたコメントをもとに戻す
+			cmnt.Text = formattedComment
+			cmnts.List[j] = cmnt
+		}
+
+		file.Syntax.Comments[i] = cmnts
+	}
+
+	var buf bytes.Buffer
+	err = format.Node(&buf, file.Fset, file.Syntax)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 // FormatCodeInComment はコメントを与えて、フォーマットしたコメントを返す
@@ -67,40 +82,26 @@ func FormatCodeInComment(commentString string) (string, error) {
 	return formattedComment, nil
 }
 
-// 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
-func ProcessFile(filename string) (string, error) {
-	// TODO: fはわかりにくそう
-	file, err := Parse(filename)
-	if err != nil {
-		return "", err
+/*
+TrimCommentMarker はコメントからコメントマーカ(// や　/*)を取り除く
+pkg.go.dev/go/doc/commentによると(commemt.Parser).Parseの引数にコメントを与えるとき
+コメントマーカを削除してから与えることになっているため
+*/
+func TrimCommentMarker(comment string) (string, string) {
+	var commentMarker string
+	if strings.HasPrefix(comment, "//") {
+		comment = strings.TrimLeft(comment, "//")
+		commentMarker = "//"
+	} else {
+		comment = strings.TrimLeft(comment, "/*")
+		comment = strings.TrimRight(comment, "*/")
+		commentMarker = "/*"
 	}
-
-	// 与えられたファイルからコメントを抜き出してすべてにフォーマットをかけて戻す
-	// cmnts: astからcommentGroupを抜き出したもの
-	// cmnt: commentGroupからcommnetを抜き出したもの
-	for i, cmnts := range file.Syntax.Comments {
-		for j, cmnt := range cmnts.List {
-			formattedComment, err := FormatCodeInComment(cmnt.Text)
-			if err != nil {
-				return "", err
-			}
-
-			// フォーマットしたコメントをもとに戻す
-			cmnt.Text = formattedComment
-			cmnts.List[j] = cmnt
-		}
-
-		file.Syntax.Comments[i] = cmnts
-	}
-
-	var buf bytes.Buffer
-	err = format.Node(&buf, file.Fset, file.Syntax)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), nil
+	comment = strings.TrimLeft(comment, "\t")
+	return comment, commentMarker
 }
 
+// TODO: format関係ないし、この関数いる？
 func IsGoFile(filename string) bool {
 	return (filepath.Ext(filename) == ".go")
 }
