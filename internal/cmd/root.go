@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 funera1
 */
 package cmd
 
@@ -40,12 +40,10 @@ var rootCmd = &cobra.Command{
 	RunE:  runE,
 }
 
-func runE(cmd *cobra.Command, args []string) error {
+func runE(cmd *cobra.Command, args []string) (rerr error) {
 	// TODO: 自由に指定できるようにする
 	var out io.Writer
 	out = os.Stdout
-
-	var rerr error
 
 	// argがファイルかディレクトリかそれ以外かで場合分け
 	for _, arg := range args {
