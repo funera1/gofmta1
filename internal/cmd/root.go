@@ -66,7 +66,7 @@ func main(cmd *cobra.Command, args []string) (rerr error) {
 
 		// file
 		case !info.IsDir():
-			err := GofmtalMain(argFlags, arg, info)
+			err := gofmtalMain(argFlags, arg, info)
 			if err != nil {
 				rerr = multierr.Append(rerr, err)
 				continue
@@ -94,7 +94,7 @@ func main(cmd *cobra.Command, args []string) (rerr error) {
 					continue
 				}
 
-				err := GofmtalMain(argFlags, file, info)
+				err := gofmtalMain(argFlags, file, info)
 				if err != nil {
 					rerr = multierr.Append(rerr, err)
 					continue
@@ -105,7 +105,7 @@ func main(cmd *cobra.Command, args []string) (rerr error) {
 	return nil
 }
 
-func GofmtalMain(flags *flag.FlagSet, filename string, info fs.FileInfo) (rerr error) {
+func gofmtalMain(flags *flag.FlagSet, filename string, info fs.FileInfo) (rerr error) {
 	defer derror.Wrap(&rerr, "GofmtalMain(%q)", filename)
 
 	formattedCode, err := format.ProcessFile(filename)
@@ -125,7 +125,6 @@ func GofmtalMain(flags *flag.FlagSet, filename string, info fs.FileInfo) (rerr e
 		if err != nil {
 			return err
 		}
-
 		bakname, err := file.BackupFile(filename+".", src, perm)
 		if err != nil {
 			return err
