@@ -113,7 +113,7 @@ func gofmtalMain(flags *flag.FlagSet, filename string, info fs.FileInfo) (rerr e
 		return err
 	}
 
-	// if -w flag: もとのファイルに上書きする
+	// もとのファイルに上書きする
 	if *writeFlag {
 		if info == nil {
 			return fmt.Errorf("-w should not have been allowed with stdin")
