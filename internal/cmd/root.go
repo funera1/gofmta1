@@ -5,14 +5,15 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/funera1/gofmtal/internal/derror"
+	"github.com/funera1/gofmtal/internal/file"
 	"github.com/funera1/gofmtal/internal/format"
 	"github.com/spf13/cobra"
+	flag "github.com/spf13/pflag"
 	"go.uber.org/multierr"
 )
 
@@ -20,6 +21,16 @@ const (
 	ExitOK    int = 0
 	ExitError int = 1
 )
+
+var (
+	writeFlag *bool
+)
+
+func init() {
+	// var writeFlag *bool = flag.Bool("w", false, "write result to (source) file instead of stdout")
+	writeFlag = rootCmd.Flags().BoolP("write", "w", false, "write result to (source) file instead of stdout")
+
+}
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
@@ -37,13 +48,12 @@ var rootCmd = &cobra.Command{
 	Use:   "gofmtal",
 	Short: "gofmtal is extended source code functionality in comments to gofmt.",
 	Long:  "",
-	RunE:  runE,
+	RunE:  main,
 }
 
-func runE(cmd *cobra.Command, args []string) (rerr error) {
-	// TODO: 自由に指定できるようにする
-	var out io.Writer
-	out = os.Stdout
+func main(cmd *cobra.Command, args []string) (rerr error) {
+	// 引数でとるflag
+	argFlags := cmd.Flags()
 
 	// argがファイルかディレクトリかそれ以外かで場合分け
 	for _, arg := range args {
@@ -56,7 +66,7 @@ func runE(cmd *cobra.Command, args []string) (rerr error) {
 
 		// file
 		case !info.IsDir():
-			err := GofmtalMain(arg, out)
+			err := GofmtalMain(argFlags, arg, info)
 			if err != nil {
 				rerr = multierr.Append(rerr, err)
 				continue
@@ -84,7 +94,7 @@ func runE(cmd *cobra.Command, args []string) (rerr error) {
 					continue
 				}
 
-				err := GofmtalMain(file, out)
+				err := GofmtalMain(argFlags, file, info)
 				if err != nil {
 					rerr = multierr.Append(rerr, err)
 					continue
@@ -95,7 +105,7 @@ func runE(cmd *cobra.Command, args []string) (rerr error) {
 	return nil
 }
 
-func GofmtalMain(filename string, writer io.Writer) (rerr error) {
+func GofmtalMain(flags *flag.FlagSet, filename string, info fs.FileInfo) (rerr error) {
 	defer derror.Wrap(&rerr, "GofmtalMain(%q)", filename)
 
 	formattedCode, err := format.ProcessFile(filename)
@@ -103,9 +113,43 @@ func GofmtalMain(filename string, writer io.Writer) (rerr error) {
 		return err
 	}
 
-	_, err = fmt.Fprintln(writer, formattedCode)
-	if err != nil {
-		return err
+	// if -w flag: もとのファイルに上書きする
+	if *writeFlag {
+		if info == nil {
+			return fmt.Errorf("-w should not have been allowed with stdin")
+		}
+
+		// もとのファイルのbackupを取る
+		perm := info.Mode().Perm()
+		src, err := os.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+
+		bakname, err := file.BackupFile(filename+".", src, perm)
+		if err != nil {
+			return err
+		}
+
+		// 上書きする
+		err = os.WriteFile(filename, []byte(formattedCode), perm)
+		if err != nil {
+			// 失敗したらもとに戻す
+			os.Rename(bakname, filename)
+			return err
+		}
+
+		// backup fileを削除する
+		err = os.Remove(bakname)
+		if err != nil {
+			return err
+		}
+	} else {
+		// 標準出力
+		_, err = fmt.Fprintln(os.Stdout, formattedCode)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
