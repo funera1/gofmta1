@@ -7,12 +7,13 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 
+	"github.com/funera1/gofmtal/internal/derror"
 	"github.com/funera1/gofmtal/internal/format"
 	"github.com/spf13/cobra"
+	"go.uber.org/multierr"
 )
 
 const (
@@ -25,7 +26,7 @@ const (
 func Execute() int {
 	err := rootCmd.Execute()
 	if err != nil {
-		fmt.Fprintln(os.Stdout, err)
+		fmt.Fprintln(os.Stderr, rootCmd.Use+":", err)
 		return ExitError
 	}
 	return ExitOK
@@ -44,25 +45,26 @@ func runE(cmd *cobra.Command, args []string) error {
 	var out io.Writer
 	out = os.Stdout
 
-	var errs []error
+	var rerr error
 
 	// argがファイルかディレクトリかそれ以外かで場合分け
 	for _, arg := range args {
 		switch info, err := os.Stat(arg); {
 
+		// not file or dir
 		case err != nil:
-			errs = append(errs, err)
-			log.Println("not file or dir")
+			rerr = multierr.Append(rerr, err)
 			continue
 
+		// file
 		case !info.IsDir():
 			err := GofmtalMain(arg, out)
 			if err != nil {
-				log.Println("miss GofmtalMain")
-				errs = append(errs, err)
+				rerr = multierr.Append(rerr, err)
 				continue
 			}
 
+		// dir
 		default:
 			// ディレクトリ下のすべてのファイルをfilesに追加する
 			var files []string
@@ -74,8 +76,7 @@ func runE(cmd *cobra.Command, args []string) error {
 				return err
 			})
 			if err != nil {
-				log.Println("miss filepath.WalkDir")
-				errs = append(errs, err)
+				rerr = multierr.Append(rerr, err)
 				continue
 			}
 
@@ -87,30 +88,25 @@ func runE(cmd *cobra.Command, args []string) error {
 
 				err := GofmtalMain(file, out)
 				if err != nil {
-					log.Println("miss GofmtalMain")
-					errs = append(errs, err)
+					rerr = multierr.Append(rerr, err)
 					continue
 				}
 			}
 		}
 	}
-	for _, err := range errs {
-		fmt.Fprintln(os.Stderr, err)
-	}
 	return nil
 }
 
-func GofmtalMain(filename string, writer io.Writer) error {
-	// formattedCode, err := processFile(filename)
+func GofmtalMain(filename string, writer io.Writer) (rerr error) {
+	defer derror.Wrap(&rerr, "GofmtalMain(%q)", filename)
+
 	formattedCode, err := format.ProcessFile(filename)
 	if err != nil {
-		log.Println("miss format.ProcessFile")
 		return err
 	}
 
 	_, err = fmt.Fprintln(writer, formattedCode)
 	if err != nil {
-		log.Println("miss fmt.Fprintln")
 		return err
 	}
 

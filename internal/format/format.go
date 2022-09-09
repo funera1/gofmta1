@@ -6,10 +6,14 @@ import (
 	"go/format"
 	"log"
 	"strings"
+
+	"github.com/funera1/gofmtal/internal/derror"
 )
 
 // 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
-func ProcessFile(filename string) (string, error) {
+func ProcessFile(filename string) (_ string, rerr error) {
+	defer derror.Wrap(&rerr, "ProcessFile(%q)", filename)
+
 	file, err := Parse(filename)
 	if err != nil {
 		log.Println("miss Parse")
@@ -23,7 +27,6 @@ func ProcessFile(filename string) (string, error) {
 		for j, cmnt := range cmnts.List {
 			formattedComment, err := formatCodeInComment(cmnt.Text)
 			if err != nil {
-				log.Println("miss formatCodeInComment")
 				return "", err
 			}
 
@@ -38,14 +41,15 @@ func ProcessFile(filename string) (string, error) {
 	var buf bytes.Buffer
 	err = format.Node(&buf, file.Fset, file.Syntax)
 	if err != nil {
-		log.Println("miss format.Node")
 		return "", err
 	}
 	return buf.String(), nil
 }
 
 // FormatCodeInComment はコメントを与えて、フォーマットしたコメントを返す
-func formatCodeInComment(commentString string) (string, error) {
+func formatCodeInComment(commentString string) (_ string, rerr error) {
+	defer derror.Debug(&rerr, "formatCodeInComment(%q)", commentString)
+
 	var p comment.Parser
 	// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
 	c, commentMarker := trimCommentMarker(commentString)
@@ -58,7 +62,6 @@ func formatCodeInComment(commentString string) (string, error) {
 			src, err := format.Source([]byte(c.Text))
 
 			if err != nil {
-				log.Printf("miss format.Source(%s)\n", []byte(c.Text))
 				return "", err
 			}
 			c.Text = string(src)
@@ -76,6 +79,7 @@ func formatCodeInComment(commentString string) (string, error) {
 	if commentMarker == "//" {
 		formattedComment = "// " + formattedComment
 	} else {
+		// TODO: 1行のときは改行しないほうがいい
 		formattedComment = "/*\n" + formattedComment + "\n*/"
 	}
 

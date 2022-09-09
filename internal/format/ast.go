@@ -4,7 +4,8 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"log"
+
+	"github.com/funera1/gofmtal/internal/derror"
 )
 
 type File struct {
@@ -12,11 +13,12 @@ type File struct {
 	Fset   *token.FileSet
 }
 
-func Parse(filename string) (*File, error) {
+func Parse(filename string) (_ *File, rerr error) {
+	defer derror.Wrap(&rerr, "Parse(%q)", filename)
+
 	fset := token.NewFileSet()
 	syntax, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
 	if err != nil {
-		log.Println("miss parse.ParseFile")
 		return nil, err
 	}
 
