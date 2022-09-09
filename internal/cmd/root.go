@@ -53,7 +53,7 @@ var rootCmd = &cobra.Command{
 
 func main(cmd *cobra.Command, args []string) (rerr error) {
 	// 引数でとるflag
-	argFlags := cmd.Flags()
+	flags := cmd.Flags()
 
 	// argがファイルかディレクトリかそれ以外かで場合分け
 	for _, arg := range args {
@@ -66,7 +66,7 @@ func main(cmd *cobra.Command, args []string) (rerr error) {
 
 		// file
 		case !info.IsDir():
-			err := gofmtalMain(argFlags, arg, info)
+			err := gofmtalMain(flags, arg, info)
 			if err != nil {
 				rerr = multierr.Append(rerr, err)
 				continue
@@ -94,7 +94,7 @@ func main(cmd *cobra.Command, args []string) (rerr error) {
 					continue
 				}
 
-				err := gofmtalMain(argFlags, file, info)
+				err := gofmtalMain(flags, file, info)
 				if err != nil {
 					rerr = multierr.Append(rerr, err)
 					continue
