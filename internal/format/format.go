@@ -27,25 +27,13 @@ func ProcessFile(filename string) (string, error) {
 				return "", err
 			}
 
-			// DEBUG
-			// log.Printf("before format: %#v\n", cmnt.Text)
-			// log.Printf("after format: %#v\n", formattedComment)
-
 			// フォーマットしたコメントをもとに戻す
-			// DEBUG
-			log.Printf("before cmnt %#v\n", cmnt.Text)
-			log.Printf("after cmnt %#v\n", formattedComment)
-
 			cmnt.Text = formattedComment
 			cmnts.List[j] = cmnt
 		}
 
 		file.Syntax.Comments[i] = cmnts
 	}
-
-	// DEBUG
-	// log.Println("print ast after format.")
-	// ast.Print(file.Fset, file.Syntax)
 
 	var buf bytes.Buffer
 	err = format.Node(&buf, file.Fset, file.Syntax)
