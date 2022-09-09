@@ -1,4 +1,4 @@
-// https://cs.opensource.google/go/x/pkgsite/+/master:internal/derrors/derrors.go
+// copy from https://cs.opensource.google/go/x/pkgsite/+/master:internal/derrors/derrors.go
 package derror
 
 import "fmt"
