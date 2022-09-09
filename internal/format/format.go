@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"go/doc/comment"
 	"go/format"
-	"log"
 	"strings"
 
 	"github.com/funera1/gofmtal/internal/derror"
@@ -16,7 +15,6 @@ func ProcessFile(filename string) (_ string, rerr error) {
 
 	file, err := Parse(filename)
 	if err != nil {
-		log.Println("miss Parse")
 		return "", err
 	}
 
@@ -52,8 +50,9 @@ func formatCodeInComment(commentString string) (_ string, rerr error) {
 
 	var p comment.Parser
 	// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
-	c, commentMarker := trimCommentMarker(commentString)
-	doc := p.Parse(c)
+	// c, commentMarker := trimCommentMarker(commentString)
+	commentInfo := trimCommentMarker(commentString)
+	doc := p.Parse(commentInfo.Comment)
 
 	// commentStringからCodeを抜き出しその部分にだけフォーマットかける
 	for _, c := range doc.Content {
@@ -76,11 +75,14 @@ func formatCodeInComment(commentString string) (_ string, rerr error) {
 	formattedComment = strings.Trim(formattedComment, "\n")
 
 	// コメントマーカーをつけ直す
-	if commentMarker == "//" {
+	if commentInfo.CommentMarker == "//" {
 		formattedComment = "// " + formattedComment
 	} else {
-		// TODO: 1行のときは改行しないほうがいい
-		formattedComment = "/*\n" + formattedComment + "\n*/"
+		if commentInfo.LineCount == 1 {
+			formattedComment = "/*" + formattedComment + "*/"
+		} else {
+			formattedComment = "/*\n" + formattedComment + "\n*/"
+		}
 	}
 
 	return formattedComment, nil
@@ -88,19 +90,38 @@ func formatCodeInComment(commentString string) (_ string, rerr error) {
 
 /*
 TrimCommentMarker はコメントからコメントマーカ(// や　/*)を取り除く
-pkg.go.dev/go/doc/commentによると(commemt.Parser).Parseの引数にコメントを与えるとき
+pkg.go.dev/go/doc/comment によると(commemt.Parser).Parseの引数にコメントを与えるとき
 コメントマーカを削除してから与えることになっているため
 */
-func trimCommentMarker(comment string) (string, string) {
+
+type CommentInfo struct {
+	Comment       string
+	CommentMarker string
+	LineCount     int
+}
+
+func trimCommentMarker(comment string) CommentInfo {
+	// 行数数える
+	lineCount := strings.Count(comment, "\n")
+
 	var commentMarker string
+
+	// commentからcommentMarkerを取り除く
 	if strings.HasPrefix(comment, "//") {
-		comment = strings.TrimLeft(comment, "//")
 		commentMarker = "//"
+
+		comment = strings.TrimLeft(comment, "//")
 	} else {
+		commentMarker = "/*"
+
 		comment = strings.TrimLeft(comment, "/*")
 		comment = strings.TrimRight(comment, "*/")
-		commentMarker = "/*"
 	}
+
 	comment = strings.TrimLeft(comment, "\t")
-	return comment, commentMarker
+	return CommentInfo{
+		Comment:       comment,
+		CommentMarker: commentMarker,
+		LineCount:     lineCount,
+	}
 }
