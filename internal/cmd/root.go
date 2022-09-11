@@ -29,7 +29,6 @@ var (
 func init() {
 	// var writeFlag *bool = flag.Bool("w", false, "write result to (source) file instead of stdout")
 	writeFlag = rootCmd.Flags().BoolP("write", "w", false, "write result to (source) file instead of stdout")
-
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
