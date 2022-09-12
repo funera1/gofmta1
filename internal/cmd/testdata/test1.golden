@@ -1,11 +1,33 @@
 package main
 
 /*
-[google]https://google.com
+func test2() {
+    var b int;;
+}
 
-	func main() {
-		int a
-	}
+func test1() {
+    var a int;;
+}
+*/
+/*
+func test2() {
+    var b int
+}
+
+func test1() {
+    var a int;;
+}
+*/
+/*
+func test1() {
+    var a int;;
+}
+*/
+/*
+cmnt
+func test1() {
+    var a int;;
+}
 */
 func main() {
 	var a int

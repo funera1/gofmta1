@@ -1,31 +1,21 @@
-package main
-
-// comment
+package test
 /*
-comment
-	  func test2() {
-				var a int;;;;
-			}
+cmnt
+func test2(){
+    var a int;;
+}
+cmnt
+func test2(){
+    var a int;;
+}
 */
-func test4() {
+/*
+func test(){
+    var a int
+}
+
+cmnt
+*/
+func main() {
 	var a int
 }
-
-// comment
-/*
-func test4() {
-	var a int;
-}
-*/
-/*
-comment
-*/
-// comment
-
-/* comment */
-
-/*
-comment
-*/
-
-// comment

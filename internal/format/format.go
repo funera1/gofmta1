@@ -2,6 +2,8 @@ package format
 
 import (
 	"bytes"
+	"fmt"
+	"go/ast"
 	"go/doc/comment"
 	"go/format"
 	"strings"
@@ -9,6 +11,10 @@ import (
 	"github.com/funera1/gofmtal/internal/derror"
 )
 
+/* TODO:
+gofmtでprocessFileという名前がつけられてたから同じ名前つけていたが、
+関数名から意味を読み取りにくいので、renameしても良さそう
+*/
 // 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
 func ProcessFile(filename string) (_ string, rerr error) {
 	defer derror.Wrap(&rerr, "ProcessFile(%q)", filename)
@@ -23,13 +29,20 @@ func ProcessFile(filename string) (_ string, rerr error) {
 	// cmnt: commentGroupからcommnetを抜き出したもの
 	for i, cmnts := range file.Syntax.Comments {
 		for j, cmnt := range cmnts.List {
-			formattedComment, err := formatCodeInComment(cmnt.Text)
+			formattedComment, err := formatCodeInComment(cmnt, file)
 			if err != nil {
 				return "", err
 			}
 
 			// フォーマットしたコメントをもとに戻す
 			cmnt.Text = formattedComment
+			fmt.Printf("cmnt.Slash is %d\n", cmnt.Slash)
+			if cmnt.Slash == 2 {
+				cmnt.Slash = 3
+			}
+			if cmnt.Slash == 12 {
+				cmnt.Slash = 15
+			}
 			cmnts.List[j] = cmnt
 		}
 
@@ -41,16 +54,18 @@ func ProcessFile(filename string) (_ string, rerr error) {
 	if err != nil {
 		return "", err
 	}
+
 	return buf.String(), nil
 }
 
 // FormatCodeInComment はコメントを与えて、フォーマットしたコメントを返す
-func formatCodeInComment(commentString string) (_ string, rerr error) {
-	defer derror.Debug(&rerr, "formatCodeInComment(%q)", commentString)
+func formatCodeInComment(cmnt *ast.Comment, file *File) (_ string, rerr error) {
+	defer derror.Debug(&rerr, "formatCodeInComment(%q)", cmnt.Text)
+
+	commentString := cmnt.Text
 
 	var p comment.Parser
 	// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
-	// c, commentMarker := trimCommentMarker(commentString)
 	commentInfo := trimCommentMarker(commentString)
 	doc := p.Parse(commentInfo.Comment)
 
@@ -59,10 +74,10 @@ func formatCodeInComment(commentString string) (_ string, rerr error) {
 		switch c := c.(type) {
 		case *comment.Code:
 			src, err := format.Source([]byte(c.Text))
-
 			if err != nil {
 				return "", err
 			}
+
 			c.Text = string(src)
 		}
 	}
@@ -71,6 +86,8 @@ func formatCodeInComment(commentString string) (_ string, rerr error) {
 	b := pr.Comment(doc)
 	formattedComment := string(b)
 
+	// TODO
+	// formattedCommentともとのコメントの改行場所をあわせたい。そこがコメントマーカがずれる原因になってる
 	// 改行するとコメントがずれるので削除
 	formattedComment = strings.Trim(formattedComment, "\n")
 

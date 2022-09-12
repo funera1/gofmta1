@@ -7,6 +7,19 @@ func test2() {
 
 func test1() {
     var a int;;
+
+}
+*/
+/*
+func test2() {
+    var b int;;
+
+
+
+}
+
+func test1() {
+    var a int;;
 }
 */
 /*
