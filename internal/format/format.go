@@ -2,7 +2,6 @@ package format
 
 import (
 	"bytes"
-	"fmt"
 	"go/ast"
 	"go/doc/comment"
 	"go/format"
@@ -36,13 +35,6 @@ func ProcessFile(filename string) (_ string, rerr error) {
 
 			// フォーマットしたコメントをもとに戻す
 			cmnt.Text = formattedComment
-			fmt.Printf("cmnt.Slash is %d\n", cmnt.Slash)
-			if cmnt.Slash == 2 {
-				cmnt.Slash = 3
-			}
-			if cmnt.Slash == 12 {
-				cmnt.Slash = 15
-			}
 			cmnts.List[j] = cmnt
 		}
 
