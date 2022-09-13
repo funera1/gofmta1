@@ -67,7 +67,9 @@ func formatCodeInComment(cmnt *ast.Comment, file *File) (_ string, rerr error) {
 		case *comment.Code:
 			src, err := format.Source([]byte(c.Text))
 			if err != nil {
-				return "", err
+				// format.Source()でsyntax errorが発生するコードは
+				// そもそもformatできないので、無視する
+				continue
 			}
 
 			c.Text = string(src)
