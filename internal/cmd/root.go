@@ -50,7 +50,9 @@ var rootCmd = &cobra.Command{
 	RunE:  main,
 }
 
-func main(cmd *cobra.Command, args []string) (rerr error) {
+func main(cmd *cobra.Command, args []string) error {
+	var rerr error
+
 	// 引数でとるflag
 	flags := cmd.Flags()
 
@@ -100,6 +102,10 @@ func main(cmd *cobra.Command, args []string) (rerr error) {
 				}
 			}
 		}
+	}
+
+	if rerr != nil {
+		return rerr
 	}
 	return nil
 }
