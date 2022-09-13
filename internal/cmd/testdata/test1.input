@@ -5,16 +5,10 @@ func test2() {
     var b int;;
 }
 
-
-
-
-
 func test1() {
     var a int;;
+
 }
-*/
-/*
-functest1(){varaint;;}
 */
 func test2() {
     var b int;;
