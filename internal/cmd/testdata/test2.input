@@ -1,15 +1,16 @@
 package main
 
 /*
-	func test2() {
-		var a int
-	}
+cmnt
+func test2() {
+	var a int;
+}
 */
 func test2() {
 	// comment
 	// comment
 	/*
-		var a int
+		var a int;
 	*/
 	var a int
 }

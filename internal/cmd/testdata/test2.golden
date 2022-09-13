@@ -1,6 +1,7 @@
 package main
 
 /*
+cmnt
     func test2() {
         var a int
     }
