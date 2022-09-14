@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/doc/comment"
 	"go/format"
+	"go/token"
 	"strings"
 
 	"github.com/funera1/gofmtal/internal/derror"
@@ -40,6 +41,9 @@ func ProcessFile(filename string) (_ string, rerr error) {
 
 		file.Syntax.Comments[i] = cmnts
 	}
+
+	// formatでずれたlinesを調整する
+	file.Tfile.SetLines(file.Lines)
 
 	var buf bytes.Buffer
 	err = format.Node(&buf, file.Fset, file.Syntax)
@@ -96,6 +100,9 @@ func formatCodeInComment(cmnt *ast.Comment, file *File) (_ string, rerr error) {
 		}
 	}
 
+	// formatするとコメント内の改行が変動するので、調整する必要がある
+	adjustLines(formattedComment, cmnt, file)
+
 	return formattedComment, nil
 }
 
@@ -135,4 +142,71 @@ func trimCommentMarker(comment string) CommentInfo {
 		CommentMarker: commentMarker,
 		LineCount:     lineCount,
 	}
+}
+
+// file.Linesについて、cmntの範囲内のLinesについてずれた分の調整をする
+func adjustLines(formattedComment string, cmnt *ast.Comment, file *File) {
+	startPos := cmnt.Slash
+	startOfs := file.Tfile.Offset(startPos)
+	// TODO: len(cmnt.Text)ってエスケープ文字含含んでのかな？正しいpos返してる？
+	endPos := token.Pos(int(startPos) + len(cmnt.Text))
+	endOfs := file.Tfile.Offset(endPos)
+
+	// TODO: startInd, endIndは境界条件について注意する
+	// startIndex, endIndexはコメントマーカーを含まない
+	startIndex := -1
+	for i := 0; i < len(file.Lines); i++ {
+		if startIndex != -1 {
+			break
+		}
+
+		// startIndexはコメントが始まってから一番最初の改行の位置を持つ
+		if startOfs < file.Lines[i] {
+			startIndex = i
+		}
+	}
+
+	endIndex := -1
+	for i := 0; i < len(file.Lines)-1; i++ {
+		if endIndex != -1 {
+			break
+		}
+
+		// endIndexはコメントが終わってから一番最初の改行の位置を持つ
+		// これはコメントの位置を配列について[startIndex, endIndex)を範囲として取るため
+		if endOfs <= file.Lines[i+1] {
+			endIndex = i
+		}
+	}
+
+	var newlines []int
+	// formattedCommentの改行のPosを取得する
+	for i, c := range formattedComment {
+		// 改改の位置を調べる. '\n'は10
+		if c == 10 {
+			// TODO: startOfs+iであってる？
+			newlines = append(newlines, startOfs+i)
+		}
+	}
+
+	// newlinesを[startIndex, endindex]の部分に置換する
+	lis := make([][]int, 3)
+	lis[0] = file.Lines[:startIndex]
+	lis[1] = newlines
+	lis[2] = file.Lines[endIndex+1:]
+
+	file.Lines = myappend(lis)
+}
+
+// 配列内の配列について連結したものを返す
+func myappend(lis [][]int) []int {
+	var ret []int
+
+	if len(lis) == 1 {
+		ret = append(ret, lis[0]...)
+	} else {
+		ret = append(lis[0], myappend(lis[1:])...)
+	}
+
+	return ret
 }
