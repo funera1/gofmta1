@@ -153,9 +153,9 @@ func adjustLines(formattedComment string, cmnt *ast.Comment, file *File) {
 	endOfs := file.Tfile.Offset(endPos)
 
 	// TODO: startInd, endIndは境界条件について注意する
-	// startIndex, endIndexはコメントマーカーを含まない
+	// startIndex, endIndexはコメントマーカーを含む
 	startIndex := -1
-	for i := 0; i < len(file.Lines); i++ {
+	for i := 0; i < len(file.Lines)-1; i++ {
 		if startIndex != -1 {
 			break
 		}
@@ -167,7 +167,7 @@ func adjustLines(formattedComment string, cmnt *ast.Comment, file *File) {
 	}
 
 	endIndex := -1
-	for i := 0; i < len(file.Lines)-1; i++ {
+	for i := 0; i < len(file.Lines); i++ {
 		if endIndex != -1 {
 			break
 		}
@@ -184,28 +184,31 @@ func adjustLines(formattedComment string, cmnt *ast.Comment, file *File) {
 	for i, c := range formattedComment {
 		// 改改の位置を調べる. '\n'は10
 		if c == 10 {
-			// TODO: startOfs+iであってる？
-			newlines = append(newlines, startOfs+i)
+			// linesは行の最初の位置なので改行の次(i+1)が入る
+			newlines = append(newlines, startOfs+i+1)
 		}
 	}
 
 	// newlinesを[startIndex, endindex]の部分に置換する
+	// TODO: lis[1]の要素がlis[2]の要素よりも大きくなる場合があり(test2など)、
+	// その場合の処理をどうしようか詰まってる
 	lis := make([][]int, 3)
 	lis[0] = file.Lines[:startIndex]
 	lis[1] = newlines
 	lis[2] = file.Lines[endIndex+1:]
 
-	file.Lines = myappend(lis)
+	file.Lines = connectLists(lis)
+	// file.Lines = []int{0, 13, 14, 17, 22, 23, 39, 51, 54, 69, 81, 93, 97, 110, 114, 125, 127, 128, 131, 141}
 }
 
 // 配列内の配列について連結したものを返す
-func myappend(lis [][]int) []int {
+func connectLists(lis [][]int) []int {
 	var ret []int
 
 	if len(lis) == 1 {
 		ret = append(ret, lis[0]...)
 	} else {
-		ret = append(lis[0], myappend(lis[1:])...)
+		ret = append(lis[0], connectLists(lis[1:])...)
 	}
 
 	return ret
