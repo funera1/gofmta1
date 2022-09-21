@@ -11,7 +11,7 @@ import (
 type File struct {
 	Syntax *ast.File
 	Fset   *token.FileSet
-	Tfile  *token.File
+	Tfile  *token.File // ast.Fileの先頭のtoken.File
 	Lines  []int
 }
 
@@ -24,8 +24,6 @@ func Parse(filename string) (_ *File, rerr error) {
 		return nil, err
 	}
 
-	// formattedCodeはコメントがずれてる場合があるので、その部分の整形を行う
-	// できるだけ処理の途途でやるべきだが、ひとまずわかりやすい場所に書く
 	tfile := fset.File(syntax.Pos())
 	lines := make([]int, tfile.LineCount())
 	for i := 0; i < tfile.LineCount(); i++ {
