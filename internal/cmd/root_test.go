@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/funera1/gofmtal/internal/debug"
+	"github.com/funera1/gofmtal/internal/derror"
 	"github.com/funera1/gofmtal/internal/format"
 	"github.com/google/go-cmp/cmp"
 )
@@ -16,6 +18,7 @@ var (
 )
 
 func init() {
+	derror.IsDebug = true
 	flag.BoolVar(&flagUpdate, "update", false, "update golden files")
 }
 
@@ -34,19 +37,21 @@ func Test(t *testing.T) {
 				out = in[:len(in)-len(".input")] + ".golden"
 			}
 
-			got, err := format.ProcessFile(in)
+			got, err := format.Format(in)
 			if err != nil {
 				t.Error(err)
 				return
 			}
 
-			want, err := os.ReadFile(out)
+			b, err := os.ReadFile(out)
 			if err != nil {
 				t.Error(err)
 				return
 			}
+			want := string(b)
 
 			if diff := cmp.Diff(got, want); diff != "" {
+				debug.CheckLines(got, want)
 				t.Error(diff)
 			}
 		})

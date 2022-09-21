@@ -3,9 +3,10 @@ package main
 // comment
 /*
 comment
-func test2() {
-    var a int
-}
+
+    func test2() {
+        var a int
+    }
 */
 func test4() {
 	var a int
@@ -13,9 +14,9 @@ func test4() {
 
 // comment
 /*
-func test4() {
-	var a int
-}
+    func test4() {
+        var a int
+    }
 */
 /*
 comment

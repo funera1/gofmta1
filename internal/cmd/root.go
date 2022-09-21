@@ -29,7 +29,6 @@ var (
 func init() {
 	// var writeFlag *bool = flag.Bool("w", false, "write result to (source) file instead of stdout")
 	writeFlag = rootCmd.Flags().BoolP("write", "w", false, "write result to (source) file instead of stdout")
-
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -51,9 +50,11 @@ var rootCmd = &cobra.Command{
 	RunE:  main,
 }
 
-func main(cmd *cobra.Command, args []string) (rerr error) {
+func main(cmd *cobra.Command, args []string) error {
+	var rerr error
+
 	// 引数でとるflag
-	argFlags := cmd.Flags()
+	flags := cmd.Flags()
 
 	// argがファイルかディレクトリかそれ以外かで場合分け
 	for _, arg := range args {
@@ -66,7 +67,7 @@ func main(cmd *cobra.Command, args []string) (rerr error) {
 
 		// file
 		case !info.IsDir():
-			err := gofmtalMain(argFlags, arg, info)
+			err := gofmtalMain(flags, arg, info)
 			if err != nil {
 				rerr = multierr.Append(rerr, err)
 				continue
@@ -94,7 +95,7 @@ func main(cmd *cobra.Command, args []string) (rerr error) {
 					continue
 				}
 
-				err := gofmtalMain(argFlags, file, info)
+				err := gofmtalMain(flags, file, info)
 				if err != nil {
 					rerr = multierr.Append(rerr, err)
 					continue
@@ -102,13 +103,17 @@ func main(cmd *cobra.Command, args []string) (rerr error) {
 			}
 		}
 	}
+
+	if rerr != nil {
+		return rerr
+	}
 	return nil
 }
 
 func gofmtalMain(flags *flag.FlagSet, filename string, info fs.FileInfo) (rerr error) {
 	defer derror.Wrap(&rerr, "GofmtalMain(%q)", filename)
 
-	formattedCode, err := format.ProcessFile(filename)
+	formattedCode, err := format.Format(filename)
 	if err != nil {
 		return err
 	}

@@ -3,10 +3,10 @@ package main
 /*
 cmnt
 
-	func test1() {
+	func test2() {
 		var a int
 	}
 */
-func main() {
+func test2() {
 	var a int
 }
