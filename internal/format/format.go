@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/doc/comment"
 	"go/format"
-	"go/token"
 	"strings"
 
 	"github.com/funera1/gofmtal/internal/derror"
@@ -16,8 +15,8 @@ gofmtでprocessFileという名前がつけられてたから同じ名前つけ�
 関数名から意味を読み取りにくいので、renameしても良さそう
 */
 // 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
-func ProcessFile(filename string) (_ string, rerr error) {
-	defer derror.Wrap(&rerr, "ProcessFile(%q)", filename)
+func Format(filename string) (_ string, rerr error) {
+	defer derror.Wrap(&rerr, "Format(%q)", filename)
 
 	file, err := Parse(filename)
 	if err != nil {
@@ -25,8 +24,6 @@ func ProcessFile(filename string) (_ string, rerr error) {
 	}
 
 	// 与えられたファイルからコメントを抜き出してすべてにフォーマットをかけて戻す
-	// cmnts: astからcommentGroupを抜き出したもの
-	// cmnt: commentGroupからcommnetを抜き出したもの
 	for i, cmnts := range file.Syntax.Comments {
 		for j, cmnt := range cmnts.List {
 			formattedComment, err := formatCodeInComment(cmnt, file)
@@ -34,7 +31,17 @@ func ProcessFile(filename string) (_ string, rerr error) {
 				return "", err
 			}
 
-			// フォーマットしたコメントをもとに戻す
+			/*
+				linesの調整はうまく行かないので一旦コメントアウト
+				// フォーマットしたコメントをもとに戻す
+				newlines, err := updateComment(cmnt, formattedComment, file)
+				if err != nil {
+					// コメントは行頭にあるという仮定で行の調整を行っているので、
+					// コメントが行頭にない場合は調整を行わない
+					continue
+				}
+				file.Lines = newlines
+			*/
 			cmnt.Text = formattedComment
 			cmnts.List[j] = cmnt
 		}
@@ -43,7 +50,7 @@ func ProcessFile(filename string) (_ string, rerr error) {
 	}
 
 	// formatでずれたlinesを調整する
-	file.Tfile.SetLines(file.Lines)
+	// file.Tfile.SetLines(file.Lines)
 
 	var buf bytes.Buffer
 	err = format.Node(&buf, file.Fset, file.Syntax)
@@ -84,8 +91,6 @@ func formatCodeInComment(cmnt *ast.Comment, file *File) (_ string, rerr error) {
 	b := pr.Comment(doc)
 	formattedComment := string(b)
 
-	// TODO
-	// formattedCommentともとのコメントの改行場所をあわせたい。そこがコメントマーカがずれる原因になってる
 	// 改行するとコメントがずれるので削除
 	formattedComment = strings.Trim(formattedComment, "\n")
 
@@ -99,9 +104,6 @@ func formatCodeInComment(cmnt *ast.Comment, file *File) (_ string, rerr error) {
 			formattedComment = "/*\n" + formattedComment + "\n*/"
 		}
 	}
-
-	// formatするとコメント内の改行が変動するので、調整する必要がある
-	adjustLines(formattedComment, cmnt, file)
 
 	return formattedComment, nil
 }
@@ -142,74 +144,4 @@ func trimCommentMarker(comment string) CommentInfo {
 		CommentMarker: commentMarker,
 		LineCount:     lineCount,
 	}
-}
-
-// file.Linesについて、cmntの範囲内のLinesについてずれた分の調整をする
-func adjustLines(formattedComment string, cmnt *ast.Comment, file *File) {
-	startPos := cmnt.Slash
-	startOfs := file.Tfile.Offset(startPos)
-	// TODO: len(cmnt.Text)ってエスケープ文字含含んでのかな？正しいpos返してる？
-	endPos := token.Pos(int(startPos) + len(cmnt.Text))
-	endOfs := file.Tfile.Offset(endPos)
-
-	// TODO: startInd, endIndは境界条件について注意する
-	// startIndex, endIndexはコメントマーカーを含む
-	startIndex := -1
-	for i := 0; i < len(file.Lines)-1; i++ {
-		if startIndex != -1 {
-			break
-		}
-
-		// startIndexはコメントが始まってから一番最初の改行の位置を持つ
-		if startOfs < file.Lines[i] {
-			startIndex = i
-		}
-	}
-
-	endIndex := -1
-	for i := 0; i < len(file.Lines); i++ {
-		if endIndex != -1 {
-			break
-		}
-
-		// endIndexはコメントが終わってから一番最初の改行の位置を持つ
-		// これはコメントの位置を配列について[startIndex, endIndex)を範囲として取るため
-		if endOfs <= file.Lines[i+1] {
-			endIndex = i
-		}
-	}
-
-	var newlines []int
-	// formattedCommentの改行のPosを取得する
-	for i, c := range formattedComment {
-		// 改改の位置を調べる. '\n'は10
-		if c == 10 {
-			// linesは行の最初の位置なので改行の次(i+1)が入る
-			newlines = append(newlines, startOfs+i+1)
-		}
-	}
-
-	// newlinesを[startIndex, endindex]の部分に置換する
-	// TODO: lis[1]の要素がlis[2]の要素よりも大きくなる場合があり(test2など)、
-	// その場合の処理をどうしようか詰まってる
-	lis := make([][]int, 3)
-	lis[0] = file.Lines[:startIndex]
-	lis[1] = newlines
-	lis[2] = file.Lines[endIndex+1:]
-
-	file.Lines = connectLists(lis)
-	// file.Lines = []int{0, 13, 14, 17, 22, 23, 39, 51, 54, 69, 81, 93, 97, 110, 114, 125, 127, 128, 131, 141}
-}
-
-// 配列内の配列について連結したものを返す
-func connectLists(lis [][]int) []int {
-	var ret []int
-
-	if len(lis) == 1 {
-		ret = append(ret, lis[0]...)
-	} else {
-		ret = append(lis[0], connectLists(lis[1:])...)
-	}
-
-	return ret
 }

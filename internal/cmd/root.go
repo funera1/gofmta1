@@ -113,7 +113,7 @@ func main(cmd *cobra.Command, args []string) error {
 func gofmtalMain(flags *flag.FlagSet, filename string, info fs.FileInfo) (rerr error) {
 	defer derror.Wrap(&rerr, "GofmtalMain(%q)", filename)
 
-	formattedCode, err := format.ProcessFile(filename)
+	formattedCode, err := format.Format(filename)
 	if err != nil {
 		return err
 	}
