@@ -2,17 +2,18 @@ package main
 
 /*
 cmnt
-    func test2() {
-        var a int
-    }
+
+	func test2() {
+		var a int
+	}
 */
 func test2() {
-    // comment
-    // comment
-    /*
-       var a int
-    */
-    var a int
+	// comment
+	// comment
+	/*
+	var a int
+	*/
+	var a int
 }
 
 /*
