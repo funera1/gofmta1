@@ -1,0 +1,12 @@
+package main
+
+/*
+cmnt
+
+	func test2() {
+		var a int
+	}
+*/
+func test2() {
+	var a int
+}
