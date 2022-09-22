@@ -31,17 +31,6 @@ func Format(filename string) (_ string, rerr error) {
 				return "", err
 			}
 
-			/*
-				linesの調整はうまく行かないので一旦コメントアウト
-				// フォーマットしたコメントをもとに戻す
-				newlines, err := updateComment(cmnt, formattedComment, file)
-				if err != nil {
-					// コメントは行頭にあるという仮定で行の調整を行っているので、
-					// コメントが行頭にない場合は調整を行わない
-					continue
-				}
-				file.Lines = newlines
-			*/
 			cmnt.Text = formattedComment
 			cmnts.List[j] = cmnt
 		}
