@@ -6,7 +6,7 @@ package main
 	func main() {
 		int a
 	}
-*/
+ */
 func main() {
 	var a int
 }

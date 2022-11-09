@@ -7,14 +7,5 @@ func test2() {
 }
 */
 func test2() {
-	// comment
-	// comment
-	/*
-		var a int;
-	*/
 	var a int
 }
-
-/*
-var a int
-*/

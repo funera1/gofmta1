@@ -2,37 +2,64 @@ package format
 
 import (
 	"bytes"
+	"go/ast"
 	"go/doc/comment"
 	"go/format"
-	"path/filepath"
 	"strings"
+
+	"github.com/funera1/gofmtal/internal/derror"
 )
 
-/*
-TrimCommentMarker はコメントからコメントマーカ(// や　/*)を取り除く
-pkg.go.dev/go/doc/commentによると(commemt.Parser).Parseの引数にコメントを与えるとき
-コメントマーカを削除してから与えることになっているため
+/* TODO:
+gofmtでprocessFileという名前がつけられてたから同じ名前つけていたが、
+関数名から意味を読み取りにくいので、renameしても良さそう
 */
-func TrimCommentMarker(comment string) (string, string) {
-	var commentMarker string
-	if strings.HasPrefix(comment, "//") {
-		comment = strings.TrimLeft(comment, "//")
-		commentMarker = "//"
-	} else {
-		comment = strings.TrimLeft(comment, "/*")
-		comment = strings.TrimRight(comment, "*/")
-		commentMarker = "/*"
+// 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
+func Format(filename string) (_ string, rerr error) {
+	defer derror.Wrap(&rerr, "Format(%q)", filename)
+
+	file, err := Parse(filename)
+	if err != nil {
+		return "", err
 	}
-	comment = strings.TrimLeft(comment, "\t")
-	return comment, commentMarker
+
+	// 与えられたファイルからコメントを抜き出してすべてにフォーマットをかけて戻す
+	for i, cmnts := range file.Syntax.Comments {
+		for j, cmnt := range cmnts.List {
+			formattedComment, err := formatCodeInComment(cmnt, file)
+			if err != nil {
+				return "", err
+			}
+
+			cmnt.Text = formattedComment
+			cmnts.List[j] = cmnt
+		}
+
+		file.Syntax.Comments[i] = cmnts
+	}
+
+	// formatでずれたlinesを調整する
+	// file.Tfile.SetLines(file.Lines)
+
+	var buf bytes.Buffer
+	err = format.Node(&buf, file.Fset, file.Syntax)
+	if err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
 }
 
 // FormatCodeInComment はコメントを与えて、フォーマットしたコメントを返す
-func FormatCodeInComment(commentString string) (string, error) {
+func formatCodeInComment(cmnt *ast.Comment, file *File) (_ string, rerr error) {
+	defer derror.Debug(&rerr, "formatCodeInComment(%q)", cmnt.Text)
+
+	commentString := cmnt.Text
+
 	var p comment.Parser
 	// p.Parseにつっこむときはコメントマーカー(//, /*, */)削除してから突っ込まないとだめ
-	c, commentMarker := TrimCommentMarker(commentString)
-	doc := p.Parse(c)
+	commentInfo := trimCommentMarker(commentString)
+	doc := p.Parse(commentInfo.Comment)
 
 	// commentStringからCodeを抜き出しその部分にだけフォーマットかける
 	for _, c := range doc.Content {
@@ -40,67 +67,70 @@ func FormatCodeInComment(commentString string) (string, error) {
 		case *comment.Code:
 			src, err := format.Source([]byte(c.Text))
 			if err != nil {
-				return "", err
+				// format.Source()でsyntax errorが発生するコードは
+				// そもそもformatできないので、無視する
+				continue
 			}
+
 			c.Text = string(src)
 		}
 	}
 
-	// コメントから抜き出したコードについてフォーマットをかける
 	var pr comment.Printer
-	b, err := format.Source(pr.Comment(doc))
-	if err != nil {
-		return "", err
-	}
+	b := pr.Comment(doc)
 	formattedComment := string(b)
 
 	// 改行するとコメントがずれるので削除
 	formattedComment = strings.Trim(formattedComment, "\n")
 
 	// コメントマーカーをつけ直す
-	if commentMarker == "//" {
-		formattedComment = "// " + c
+	if commentInfo.CommentMarker == "//" {
+		formattedComment = "// " + formattedComment
 	} else {
-		formattedComment = "/*\n" + c + "\n*/"
+		if commentInfo.LineCount == 1 {
+			formattedComment = "/*" + formattedComment + "*/"
+		} else {
+			formattedComment = "/*\n" + formattedComment + "\n*/"
+		}
 	}
 
 	return formattedComment, nil
 }
 
-// 後で整理するためにprocessFileというFormatCodeの仮の関数の用意
-func processFile(filename string) (string, error) {
-	// TODO: fはわかりにくそう
-	astFile, fset, err := GetAst(filename)
-	if err != nil {
-		return "", err
-	}
+/*
+TrimCommentMarker はコメントからコメントマーカ(// や　/*)を取り除く
+pkg.go.dev/go/doc/comment によると(commemt.Parser).Parseの引数にコメントを与えるとき
+コメントマーカを削除してから与えることになっているため
+*/
 
-	// 与えられたファイルからコメントを抜き出してすべてにフォーマットをかけて戻す
-	// cmnts: astからcommentGroupを抜き出したもの
-	// cmnt: commentGroupからcommnetを抜き出したもの
-	for i, cmnts := range astFile.Comments {
-		for j, cmnt := range cmnts.List {
-			formattedComment, err := FormatCodeInComment(cmnt.Text)
-			if err != nil {
-				return "", err
-			}
-
-			// フォーマットしたコメントをもとに戻す
-			cmnt.Text = formattedComment
-			cmnts.List[j] = cmnt
-		}
-
-		astFile.Comments[i] = cmnts
-	}
-
-	var buf bytes.Buffer
-	err = format.Node(&buf, fset, astFile)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), nil
+type CommentInfo struct {
+	Comment       string
+	CommentMarker string
+	LineCount     int
 }
 
-func IsGoFile(filename string) bool {
-	return (filepath.Ext(filename) == ".go")
+func trimCommentMarker(comment string) CommentInfo {
+	// 行数数える
+	lineCount := strings.Count(comment, "\n")
+
+	var commentMarker string
+
+	// commentからcommentMarkerを取り除く
+	if strings.HasPrefix(comment, "//") {
+		commentMarker = "//"
+
+		comment = strings.TrimLeft(comment, "//")
+	} else {
+		commentMarker = "/*"
+
+		comment = strings.TrimLeft(comment, "/*")
+		comment = strings.TrimRight(comment, "*/")
+	}
+
+	comment = strings.TrimLeft(comment, "\t")
+	return CommentInfo{
+		Comment:       comment,
+		CommentMarker: commentMarker,
+		LineCount:     lineCount,
+	}
 }

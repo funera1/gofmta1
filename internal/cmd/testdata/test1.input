@@ -1,11 +1,10 @@
 package main
 
 /*
-[google]https://google.com
-
-	func main() {
-        var a int;;
-	}
+cmnt
+func test1() {
+    var a int;;
+}
 */
 func main() {
 	var a int
